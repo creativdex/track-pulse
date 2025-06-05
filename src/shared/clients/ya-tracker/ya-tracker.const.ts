@@ -1,0 +1,10 @@
+export const PAGINATION_CONSTANTS = {
+  DEFAULT_PAGE_START: 1,
+  DEFAULT_PER_PAGE: 50,
+  MAX_PER_PAGE: 100,
+  DEFAULT_PER_SCROLL: 1000,
+  MAX_PER_SCROLL: 1000,
+  DEFAULT_SCROLL_TTL: 60000, // 1 минута
+  MIN_SCROLL_TTL: 1000, // 1 секунда
+  MAX_ITERATIONS: 1000, // Защита от бесконечных циклов
+} as const;
