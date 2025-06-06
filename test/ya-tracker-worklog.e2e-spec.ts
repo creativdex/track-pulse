@@ -10,7 +10,7 @@ import { YaTrackerModule } from '../src/shared/clients/ya-tracker/ya-tracker.mod
 import type { AxiosError } from 'axios';
 import type { IClientResult } from '../src/shared/types/client-result.type';
 
-describe('YaTracker E2E Tests - User', () => {
+describe('YaTracker E2E Tests - Worklog', () => {
   let app: NestFastifyApplication;
   let yaTrackerClient: YaTrackerClient;
   let configService: ConfigService;
@@ -55,14 +55,28 @@ describe('YaTracker E2E Tests - User', () => {
 
     it('should initialize YaTrackerClient', () => {
       expect(yaTrackerClient).toBeDefined();
-      expect(yaTrackerClient.users).toBeDefined();
+      expect(yaTrackerClient.worklog).toBeDefined();
     });
   });
 
   const isRealApiTest = process.env.ENABLE_REAL_API_TESTS === 'true';
   (isRealApiTest ? describe : describe.skip)('Real API Integration', () => {
-    it('should get users list', async () => {
-      const result = await yaTrackerClient.users.getUsers();
+    it('should get worklog by task', async () => {
+      const taskId = 'DV-21';
+      const result = await yaTrackerClient.worklog.getByTaskWorklog({
+        taskId,
+      });
+      expect(result).toBeDefined();
+      if (result.success) {
+        expect(result.data).toBeInstanceOf(Array);
+      }
+    });
+
+    it('should get worklog by user', async () => {
+      const userId = '8000000000000024';
+      const result = await yaTrackerClient.worklog.getByQueryWorklog({
+        createdBy: userId,
+      });
       expect(result).toBeDefined();
       if (result.success) {
         expect(result.data).toBeInstanceOf(Array);
@@ -86,7 +100,9 @@ describe('YaTracker E2E Tests - User', () => {
         success: false,
         error: axiosError,
       });
-      const result = await yaTrackerClient.users.getUsers();
+      const result = await yaTrackerClient.worklog.getByQueryWorklog({
+        createdBy: '8000000000000024',
+      });
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeDefined();
@@ -95,15 +111,24 @@ describe('YaTracker E2E Tests - User', () => {
     });
 
     it('should call makeRequest with correct parameters', async () => {
-      const mockResponse = { data: [{ id: 'user1', display: 'Test User' }] };
+      const mockResponse = {
+        data: [
+          {
+            id: 'worklog1',
+            issue: 'DV-21',
+            comment: 'Worked on task DV-21',
+          },
+        ],
+      };
       const mockMakeRequest = jest.spyOn(yaTrackerClient, 'makeRequest').mockResolvedValue({
         success: true,
         data: mockResponse.data,
       } as IClientResult<any>);
-      const result = await yaTrackerClient.users.getUsers();
+      const payload = {};
+      const result = await yaTrackerClient.worklog.getByQueryWorklog(payload);
       expect(mockMakeRequest).toHaveBeenCalledWith(
-        { method: 'GET', endpoint: 'users', contentType: 'application/json' },
-        'get_users',
+        { method: 'POST', endpoint: 'worklog/_search', data: payload, contentType: 'application/json' },
+        'get_worklogs_by_query',
       );
       expect(result.success).toBe(true);
       if (result.success) {
@@ -111,12 +136,12 @@ describe('YaTracker E2E Tests - User', () => {
       }
     });
 
-    it('should return empty array if no users found', async () => {
+    it('should return empty array if no worklogs found', async () => {
       jest.spyOn(yaTrackerClient, 'makeRequest').mockResolvedValue({
         success: true,
         data: [],
       });
-      const result = await yaTrackerClient.users.getUsers();
+      const result = await yaTrackerClient.worklog.getByQueryWorklog({});
       expect(result.success).toBe(true);
       if (result.success) {
         expect(Array.isArray(result.data)).toBe(true);
@@ -136,22 +161,24 @@ describe('YaTracker E2E Tests - User', () => {
       }
     });
 
-    it('should support filtering users by query', async () => {
-      const mockUsers = [
-        { id: 'user1', display: 'Test User' },
-        { id: 'user2', display: 'Another User' },
+    it('should support filtering worklogs by query', async () => {
+      const mockWorklogs = [
+        { id: 'worklog1', issue: 'DV-21', comment: 'Worked on task DV-21' },
+        { id: 'worklog2', issue: 'DV-22', comment: 'Worked on task DV-22' },
       ];
       const mockMakeRequest = jest.spyOn(yaTrackerClient, 'makeRequest').mockResolvedValue({
         success: true,
-        data: mockUsers,
+        data: mockWorklogs,
       } as IClientResult<any>);
-      // Suppose getUsers supports a query param (for demonstration)
-      // In real client, you may need to add this param
-      const result = await yaTrackerClient.users.getUsers(/*{ query: 'Test' }*/);
-      expect(mockMakeRequest).toHaveBeenCalled();
+      const payload = { createdBy: '8000000000000024' };
+      const result = await yaTrackerClient.worklog.getByQueryWorklog(payload);
+      expect(mockMakeRequest).toHaveBeenCalledWith(
+        { method: 'POST', endpoint: 'worklog/_search', data: payload, contentType: 'application/json' },
+        'get_worklogs_by_query',
+      );
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data).toEqual(mockUsers);
+        expect(result.data).toEqual(mockWorklogs);
       }
     });
   });

@@ -57,7 +57,6 @@ describe('YaTracker E2E Tests - Task', () => {
     it('should initialize YaTrackerClient', () => {
       expect(yaTrackerClient).toBeDefined();
       expect(yaTrackerClient.tasks).toBeDefined();
-      expect(yaTrackerClient.users).toBeDefined();
     });
   });
 

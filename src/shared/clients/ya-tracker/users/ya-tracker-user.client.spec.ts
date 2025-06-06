@@ -91,7 +91,7 @@ describe('YaTrackerUserClient', () => {
         const result = await userClient.getUser({ userId: '1' });
 
         expect(mockBaseClient.makeRequest).toHaveBeenCalledWith(
-          { method: EHttpMethod.GET, endpoint: 'users/1', contentType: EContentType.JSON },
+          { method: EHttpMethod.GET, endpoint: 'users/1', contentType: EContentType.JSON, params: { userId: '1' } },
           'get_user',
         );
         expect(result).toEqual({ data: mockUser });
@@ -124,7 +124,12 @@ describe('YaTrackerUserClient', () => {
       mockBaseClient.makeRequest.mockRejectedValue(new Error('User not found'));
       await expect(userClient.getUser({ userId: invalidUserId })).rejects.toThrow('User not found');
       expect(mockBaseClient.makeRequest).toHaveBeenCalledWith(
-        { method: EHttpMethod.GET, endpoint: `users/${invalidUserId}`, contentType: EContentType.JSON },
+        {
+          method: EHttpMethod.GET,
+          endpoint: `users/${invalidUserId}`,
+          contentType: EContentType.JSON,
+          params: { userId: invalidUserId },
+        },
         'get_user',
       );
     });

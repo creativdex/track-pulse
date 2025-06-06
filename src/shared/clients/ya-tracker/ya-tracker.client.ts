@@ -8,6 +8,7 @@ import { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { IScrollMeta, IPaginateMeta, IScrollOptions, IPaginateOptions } from './ya-tracker.model';
 import { PAGINATION_CONSTANTS } from './ya-tracker.const';
 import { YaTrackerUserClient } from './users/ya-tracker-user.client';
+import { YaTrackerWorklogClient } from './worklog/ya-tracker-worklog.client';
 
 @Injectable()
 export class YaTrackerClient extends AbstractHttpClient {
@@ -17,6 +18,7 @@ export class YaTrackerClient extends AbstractHttpClient {
 
   public readonly tasks: YaTrackerTaskClient;
   public readonly users: YaTrackerUserClient;
+  public readonly worklog: YaTrackerWorklogClient;
 
   constructor(private configService: ConfigService) {
     const apiUrl = configService.getOrThrow<string>('ENV__YA_TRACKER_API_URL');
@@ -27,6 +29,7 @@ export class YaTrackerClient extends AbstractHttpClient {
 
     this.tasks = new YaTrackerTaskClient(this);
     this.users = new YaTrackerUserClient(this);
+    this.worklog = new YaTrackerWorklogClient(this);
   }
 
   /**

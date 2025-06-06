@@ -88,7 +88,7 @@ export class YaTrackerTaskClient {
    * Ищет задачи и возвращает все результаты в виде массива
    * @param searchRequest - Критерии поиска
    * @param options - Дополнительные опции поиска
-   * @returns Массив найденных задач
+   * @returns Массив найденных зPадач
    */
   async searchTasksToArray(
     searchRequest: ISearchTasksRequest,

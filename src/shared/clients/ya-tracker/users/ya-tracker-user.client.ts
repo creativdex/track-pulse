@@ -4,7 +4,7 @@ import { EContentType, EHttpMethod } from '@src/shared/abstract/http-client/http
 import { YaTrackerClient } from '../ya-tracker.client';
 import { IHttpRequestOptions } from '@src/shared/abstract/http-client/http-client.abstract.interface';
 import { ITrackerUser } from './models/user.model';
-import { IGetUser } from './models/get-user.model';
+import { ITrackerGetUser } from './models/get-user.model';
 
 export class YaTrackerUserClient {
   private readonly logger = new Logger(YaTrackerUserClient.name);
@@ -32,12 +32,13 @@ export class YaTrackerUserClient {
    * @param payload - Данные для получения пользователя
    * @returns Данные пользователя
    */
-  async getUser(payload: IGetUser): Promise<IClientResult<ITrackerUser>> {
+  async getUser(payload: ITrackerGetUser): Promise<IClientResult<ITrackerUser>> {
     this.logger.log('Getting user', { userId: payload.userId });
 
     const options: IHttpRequestOptions<void> = {
       method: EHttpMethod.GET,
       endpoint: `users/${payload.userId}`,
+      params: payload,
       contentType: EContentType.JSON,
     };
 
