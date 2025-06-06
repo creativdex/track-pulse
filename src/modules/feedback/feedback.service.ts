@@ -26,7 +26,7 @@ export class FeedbackService {
       .filter(Boolean)
       .join('\n');
 
-    const result = await this.yaTrackerClient.createTask({
+    const result = await this.yaTrackerClient.tasks.createTask({
       queue: this.configService.getOrThrow<string>('ENV__YA_TRACKER_QUEUE'),
       summary: 'Запрос с сайта',
       description: message,
@@ -37,7 +37,7 @@ export class FeedbackService {
     if (result.success) {
       this.logger.log(`Feedback created: ${result.data.id}`);
     } else {
-      this.logger.error(`Error creating feedback: ${result.error}`);
+      this.logger.error(`Error creating feedback: ${result.error.message}`);
     }
 
     return result;
