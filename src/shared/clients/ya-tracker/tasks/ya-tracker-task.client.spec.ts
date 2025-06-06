@@ -284,70 +284,6 @@ describe('YaTrackerTaskClient', () => {
       order: 'created',
     };
 
-    const mockTasks: ITrackerTask[] = [
-      {
-        self: 'https://api.tracker.yandex.net/v2/issues/TEST-1',
-        id: 'test-id-1',
-        key: 'TEST-1',
-        version: 1,
-        lastCommentUpdatedAt: '2024-01-01T00:00:00.000Z',
-        summary: 'Test Task 1',
-        updatedBy: {
-          self: 'https://api.tracker.yandex.net/v2/users/user1',
-          id: 'user1',
-          display: 'Test User',
-        },
-        description: 'Test description 1',
-        type: {
-          self: 'https://api.tracker.yandex.net/v2/issueTypes/1',
-          id: '1',
-          key: 'task',
-          display: 'Task',
-        },
-        priority: {
-          self: 'https://api.tracker.yandex.net/v2/priorities/2',
-          id: '2',
-          key: 'normal',
-          display: 'Normal',
-        },
-        createdAt: '2024-01-01T00:00:00.000Z',
-        followers: [],
-        createdBy: {
-          self: 'https://api.tracker.yandex.net/v2/users/user1',
-          id: 'user1',
-          display: 'Test User',
-        },
-        votes: 0,
-        assignee: {
-          self: 'https://api.tracker.yandex.net/v2/users/user1',
-          id: 'user1',
-          display: 'Test User',
-        },
-        project: {
-          primary: {
-            self: 'https://api.tracker.yandex.net/v2/projects/1',
-            id: '1',
-            display: 'Test Project',
-          },
-          secondary: [],
-        },
-        queue: {
-          self: 'https://api.tracker.yandex.net/v2/queues/TEST',
-          id: 'test-queue-id',
-          key: 'TEST',
-          display: 'Test Queue',
-        },
-        updatedAt: '2024-01-01T00:00:00.000Z',
-        status: {
-          self: 'https://api.tracker.yandex.net/v2/statuses/1',
-          id: '1',
-          key: 'open',
-          display: 'Open',
-        },
-        favorite: false,
-      },
-    ];
-
     it('should search tasks with default options', async () => {
       const onPageMock = jest.fn();
       mockBaseClient.requestAllData.mockResolvedValue(undefined);
@@ -477,7 +413,6 @@ describe('YaTrackerTaskClient', () => {
         },
       ];
 
-      // Мокаем searchTasks чтобы вызвать колбэк с тестовыми данными
       jest.spyOn(taskClient, 'searchTasks').mockImplementation(async (request, options, onPage) => {
         await onPage(mockTasks, { page: 1, isLast: true });
       });
@@ -493,27 +428,28 @@ describe('YaTrackerTaskClient', () => {
 
   describe('Convenience search methods', () => {
     const onPageMock = jest.fn();
+    let searchTasksSpy: jest.SpyInstance;
 
     beforeEach(() => {
-      jest.spyOn(taskClient, 'searchTasks').mockResolvedValue(undefined);
+      searchTasksSpy = jest.spyOn(taskClient, 'searchTasks').mockResolvedValue(undefined);
     });
 
     it('should search tasks by queue', async () => {
       await taskClient.searchTasksByQueue('TEST', {}, onPageMock);
 
-      expect(taskClient.searchTasks).toHaveBeenCalledWith({ queue: 'TEST' }, {}, onPageMock);
+      expect(searchTasksSpy).toHaveBeenCalledWith({ queue: 'TEST' }, {}, onPageMock);
     });
 
     it('should search tasks by single key', async () => {
       await taskClient.searchTasksByKeys('TEST-1', {}, onPageMock);
 
-      expect(taskClient.searchTasks).toHaveBeenCalledWith({ keys: 'TEST-1' }, {}, onPageMock);
+      expect(searchTasksSpy).toHaveBeenCalledWith({ keys: 'TEST-1' }, {}, onPageMock);
     });
 
     it('should search tasks by multiple keys', async () => {
       await taskClient.searchTasksByKeys(['TEST-1', 'TEST-2'], {}, onPageMock);
 
-      expect(taskClient.searchTasks).toHaveBeenCalledWith({ keys: ['TEST-1', 'TEST-2'] }, {}, onPageMock);
+      expect(searchTasksSpy).toHaveBeenCalledWith({ keys: ['TEST-1', 'TEST-2'] }, {}, onPageMock);
     });
 
     it('should search tasks by filter', async () => {
@@ -522,7 +458,7 @@ describe('YaTrackerTaskClient', () => {
 
       await taskClient.searchTasksByFilter(filter, onPageMock, order, {});
 
-      expect(taskClient.searchTasks).toHaveBeenCalledWith({ filter, order }, {}, onPageMock);
+      expect(searchTasksSpy).toHaveBeenCalledWith({ filter, order }, {}, onPageMock);
     });
 
     it('should search tasks by query', async () => {
@@ -530,7 +466,7 @@ describe('YaTrackerTaskClient', () => {
 
       await taskClient.searchTasksByQuery(query, {}, onPageMock);
 
-      expect(taskClient.searchTasks).toHaveBeenCalledWith({ query }, {}, onPageMock);
+      expect(searchTasksSpy).toHaveBeenCalledWith({ query }, {}, onPageMock);
     });
   });
 

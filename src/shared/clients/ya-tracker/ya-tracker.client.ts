@@ -5,8 +5,9 @@ import { AbstractHttpClient } from '@src/shared/abstract/http-client/http-client
 import { IHttpRequestOptions } from '@src/shared/abstract/http-client/http-client.abstract.interface';
 import { IClientResult } from '@src/shared/types/client-result.type';
 import { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { IScrollMeta, IPaginateMeta, IScrollOptions, IPaginateOptions } from './models/pagination-scroll.model';
+import { IScrollMeta, IPaginateMeta, IScrollOptions, IPaginateOptions } from './ya-tracker.model';
 import { PAGINATION_CONSTANTS } from './ya-tracker.const';
+import { YaTrackerUserClient } from './users/ya-tracker-user.client';
 
 @Injectable()
 export class YaTrackerClient extends AbstractHttpClient {
@@ -15,6 +16,7 @@ export class YaTrackerClient extends AbstractHttpClient {
   private readonly oauthToken: string;
 
   public readonly tasks: YaTrackerTaskClient;
+  public readonly users: YaTrackerUserClient;
 
   constructor(private configService: ConfigService) {
     const apiUrl = configService.getOrThrow<string>('ENV__YA_TRACKER_API_URL');
@@ -24,6 +26,7 @@ export class YaTrackerClient extends AbstractHttpClient {
     this.oauthToken = configService.getOrThrow<string>('SECRET__YA_TRACKER_OAUTH_TOKEN');
 
     this.tasks = new YaTrackerTaskClient(this);
+    this.users = new YaTrackerUserClient(this);
   }
 
   /**

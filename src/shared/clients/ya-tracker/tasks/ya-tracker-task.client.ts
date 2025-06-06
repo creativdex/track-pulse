@@ -6,7 +6,7 @@ import { ITrackerTask } from './models/task.model';
 import { YaTrackerClient } from '../ya-tracker.client';
 import { IHttpRequestOptions } from '@src/shared/abstract/http-client/http-client.abstract.interface';
 import { ISearchTasksRequest, ISearchTasksOptions, IExpandParameters } from './models/search-tasks.model';
-import { IScrollMeta, IPaginateMeta } from '../models/pagination-scroll.model';
+import { IScrollMeta, IPaginateMeta } from '../ya-tracker.model';
 
 export class YaTrackerTaskClient {
   private readonly logger = new Logger(YaTrackerTaskClient.name);
