@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: track-pulse-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${ENV__DB_NAME}
+      POSTGRES_USER: ${ENV__DB_USER}
+      POSTGRES_PASSWORD: ${ENV__DB_PASSWORD}
+    ports:
+      - '${ENV__DB_PORT}:5432'
+    # volumes:
+    #   - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ENV__DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# volumes:
+#   db_data:
