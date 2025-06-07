@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { YaTrackerModule } from './ya-tracker.module';
 import { YaTrackerClient } from './ya-tracker.client';
 
@@ -22,7 +22,7 @@ describe('YaTrackerModule', () => {
     });
 
     module = await Test.createTestingModule({
-      imports: [YaTrackerModule],
+      imports: [ConfigModule.forRoot({ isGlobal: true }), YaTrackerModule],
     })
       .overrideProvider(ConfigService)
       .useValue(mockConfigService)

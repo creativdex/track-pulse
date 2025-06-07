@@ -5,14 +5,12 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class FeedbackService {
-  protected readonly logger: Logger;
+  protected readonly logger = new Logger(FeedbackService.name);
 
   constructor(
     protected readonly yaTrackerClient: YaTrackerClient,
     protected readonly configService: ConfigService,
-  ) {
-    this.logger = new Logger(FeedbackService.name);
-  }
+  ) {}
 
   async createFeedback(payload: ICreateFeedback) {
     this.logger.log(`Creating feedback: ${payload.username}`);
