@@ -6,6 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfigFactory } from './shared/database/typeorm.config';
 import { ConfigService } from '@nestjs/config';
 import { configModuleOptions } from './shared/config/config.module-options';
+import { UserRateModule } from './modules/user-rate/user-rate.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { configModuleOptions } from './shared/config/config.module-options';
     ConfigModule.forRoot(configModuleOptions),
     FeedbackModule,
     SyncModule,
+    UserRateModule,
+    UserModule,
   ],
 })
 export class AppModule {}

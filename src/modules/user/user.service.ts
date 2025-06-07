@@ -18,10 +18,10 @@ export class UserService {
 
   async findAll(): Promise<IServiceResult<IUser[]>> {
     this.logger.log('Fetching all users');
-    const users = await this.userRepository.find();
+    const users = await this.userRepository.find({ relations: ['rates'] });
     return {
       success: true,
-      data: users.map((user) => ({ ...user, rate: this.lastRate(user.rates) })),
+      data: users.map(({ rates, ...user }) => ({ ...user, rate: this.lastRate(rates) })),
     };
   }
 
@@ -36,9 +36,10 @@ export class UserService {
       };
     }
     this.logger.log(`User with id ${id} found`);
+    const { rates, ...userData } = user;
     return {
       success: true,
-      data: { ...user, rate: this.lastRate(user.rates) },
+      data: { ...userData, rate: this.lastRate(rates) },
     };
   }
 
@@ -53,9 +54,10 @@ export class UserService {
       };
     }
     this.logger.log(`User with trackerUid ${trackerUid} found`);
+    const { rates, ...userData } = user;
     return {
       success: true,
-      data: { ...user, rate: this.lastRate(user.rates) },
+      data: { ...userData, rate: this.lastRate(rates) },
     };
   }
 
@@ -70,9 +72,10 @@ export class UserService {
       };
     }
     this.logger.log(`User with login ${login} found`);
+    const { rates, ...userData } = user;
     return {
       success: true,
-      data: { ...user, rate: this.lastRate(user.rates) },
+      data: { ...userData, rate: this.lastRate(rates) },
     };
   }
 
@@ -91,9 +94,10 @@ export class UserService {
     const user = this.userRepository.create(userData);
     await this.userRepository.save(user);
     this.logger.log(`User with login ${userData.login} created successfully`);
+    const { rates, ...userDataCreated } = user;
     return {
       success: true,
-      data: { ...user, rate: this.lastRate(user.rates) },
+      data: { ...userDataCreated, rate: this.lastRate(rates) },
     };
   }
 
@@ -117,9 +121,10 @@ export class UserService {
       };
     }
     this.logger.log(`User with id ${id} updated successfully`);
+    const { rates, ...userDataUpdated } = updatedUser;
     return {
       success: true,
-      data: { ...updatedUser, rate: this.lastRate(updatedUser.rates) },
+      data: { ...userDataUpdated, rate: this.lastRate(rates) },
     };
   }
 
@@ -139,6 +144,7 @@ export class UserService {
         last = rate;
       }
     }
+    this.logger.log(`Last rate for user is ${last.rate}`);
     return last.rate;
   }
 }
