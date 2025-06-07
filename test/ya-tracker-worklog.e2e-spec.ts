@@ -68,17 +68,19 @@ describe('YaTracker E2E Tests - Worklog', () => {
       });
       expect(result).toBeDefined();
       if (result.success) {
+        console.log('Worklog by task:', result.data);
         expect(result.data).toBeInstanceOf(Array);
       }
     });
 
     it('should get worklog by user', async () => {
-      const userId = '8000000000000024';
+      const userId = '8000000000000015';
       const result = await yaTrackerClient.worklog.getByQueryWorklog({
         createdBy: userId,
       });
       expect(result).toBeDefined();
       if (result.success) {
+        console.log('Worklog by user:', result.data);
         expect(result.data).toBeInstanceOf(Array);
       }
     });

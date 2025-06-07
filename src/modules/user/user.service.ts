@@ -42,7 +42,7 @@ export class UserService {
     };
   }
 
-  async findByTrackerUid(trackerUid: number): Promise<IServiceResult<IUser>> {
+  async findByTrackerUid(trackerUid: string): Promise<IServiceResult<IUser>> {
     this.logger.log(`Fetching user with trackerUid ${trackerUid}`);
     const user = await this.userRepository.findOne({ where: { trackerUid }, relations: ['rates'] });
     if (!user) {
@@ -59,13 +59,30 @@ export class UserService {
     };
   }
 
+  async findByLogin(login: string): Promise<IServiceResult<IUser>> {
+    this.logger.log(`Fetching user with login ${login}`);
+    const user = await this.userRepository.findOne({ where: { login }, relations: ['rates'] });
+    if (!user) {
+      this.logger.warn(`User with login ${login} not found`);
+      return {
+        success: false,
+        error: `User with login ${login} not found`,
+      };
+    }
+    this.logger.log(`User with login ${login} found`);
+    return {
+      success: true,
+      data: { ...user, rate: this.lastRate(user.rates) },
+    };
+  }
+
   async create(userData: ICreateUser): Promise<IServiceResult<IUser>> {
-    this.logger.log(`Creating user with trackerUid ${userData.trackerUid}`);
+    this.logger.log(`Creating user with login ${userData.login}`);
     const existingUser = await this.userRepository.findOne({
       where: [{ trackerUid: userData.trackerUid }, { email: userData.email }, { login: userData.login }],
     });
     if (existingUser) {
-      this.logger.warn(`User with trackerUid ${userData.trackerUid} already exists`);
+      this.logger.warn(`User with login ${userData.login} already exists`);
       return {
         success: false,
         error: 'User with the same trackerUid, email, or login already exists',
@@ -73,7 +90,7 @@ export class UserService {
     }
     const user = this.userRepository.create(userData);
     await this.userRepository.save(user);
-    this.logger.log(`User with trackerUid ${userData.trackerUid} created successfully`);
+    this.logger.log(`User with login ${userData.login} created successfully`);
     return {
       success: true,
       data: { ...user, rate: this.lastRate(user.rates) },

@@ -34,7 +34,7 @@ describe('SyncService', () => {
   it('should sync and create new users', async () => {
     yaTrackerClient.users.getUsers.mockResolvedValue({
       success: true,
-      data: [{ uid: 1, email: 'a@a.a', login: 'login', display: 'User' }],
+      data: [{ uid: '1', email: 'a@a.a', login: 'login', display: 'User' }],
     });
     userService.findAll.mockResolvedValue({ success: true, data: [] });
     userService.create.mockResolvedValue({
@@ -43,7 +43,7 @@ describe('SyncService', () => {
         id: '1',
         createdAt: new Date(),
         updatedAt: new Date(),
-        trackerUid: 1,
+        trackerUid: '1',
         email: 'a@a.a',
         login: 'login',
         display: 'User',
@@ -62,7 +62,7 @@ describe('SyncService', () => {
       throw new Error(result.error);
     }
     expect(userService.create).toHaveBeenCalledWith({
-      trackerUid: 1,
+      trackerUid: '1',
       email: 'a@a.a',
       login: 'login',
       display: 'User',
@@ -74,7 +74,7 @@ describe('SyncService', () => {
   it('should sync and update existing users', async () => {
     yaTrackerClient.users.getUsers.mockResolvedValue({
       success: true,
-      data: [{ uid: 2, email: 'b@b.b', login: 'login2', display: 'User2' }],
+      data: [{ uid: '2', email: 'b@b.b', login: 'login2', display: 'User2' }],
     });
     userService.findAll.mockResolvedValue({
       success: true,
@@ -83,7 +83,7 @@ describe('SyncService', () => {
           id: '2',
           createdAt: new Date(),
           updatedAt: new Date(),
-          trackerUid: 2,
+          trackerUid: '2',
           email: 'old@b.b',
           login: 'login2',
           display: 'Old',
@@ -99,7 +99,7 @@ describe('SyncService', () => {
         id: '2',
         createdAt: new Date(),
         updatedAt: new Date(),
-        trackerUid: 2,
+        trackerUid: '2',
         email: 'b@b.b',
         login: 'login2',
         display: 'User2',
@@ -118,7 +118,7 @@ describe('SyncService', () => {
       throw new Error(result.error);
     }
     expect(userService.update).toHaveBeenCalledWith('2', {
-      trackerUid: 2,
+      trackerUid: '2',
       email: 'b@b.b',
       login: 'login2',
       display: 'User2',
@@ -130,7 +130,7 @@ describe('SyncService', () => {
   it('should count failed if user creation fails', async () => {
     yaTrackerClient.users.getUsers.mockResolvedValue({
       success: true,
-      data: [{ uid: 3, email: 'c@c.c', login: 'login3', display: 'User3' }],
+      data: [{ uid: '3', email: 'c@c.c', login: 'login3', display: 'User3' }],
     });
     userService.findAll.mockResolvedValue({ success: true, data: [] });
     userService.create.mockResolvedValue({ success: false, error: 'fail' });
@@ -148,7 +148,7 @@ describe('SyncService', () => {
   it('should count failed if user update fails', async () => {
     yaTrackerClient.users.getUsers.mockResolvedValue({
       success: true,
-      data: [{ uid: 4, email: 'd@d.d', login: 'login4', display: 'User4' }],
+      data: [{ uid: '4', email: 'd@d.d', login: 'login4', display: 'User4' }],
     });
     userService.findAll.mockResolvedValue({
       success: true,
@@ -157,7 +157,7 @@ describe('SyncService', () => {
           id: '4',
           createdAt: new Date(),
           updatedAt: new Date(),
-          trackerUid: 4,
+          trackerUid: '4',
           email: 'old@d.d',
           login: 'login4',
           display: 'Old',

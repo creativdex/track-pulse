@@ -12,8 +12,8 @@ export class UserEntity {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @Column({ name: 'tracker_uid', nullable: false, unique: true })
-  trackerUid: number;
+  @Column({ name: 'tracker_uid', type: 'bigint', nullable: false, unique: true })
+  trackerUid: string;
 
   @Column({ nullable: true })
   display: string;

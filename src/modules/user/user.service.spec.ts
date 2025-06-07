@@ -61,7 +61,7 @@ describe('UserService', () => {
     const user = {
       id: '1',
       rates: [],
-      trackerUid: 1,
+      trackerUid: '1', // bigint как string
       email: 'a@a.a',
       login: 'login',
       display: 'User',
@@ -71,7 +71,7 @@ describe('UserService', () => {
     userRepository.create.mockReturnValue(user);
     userRepository.save.mockResolvedValue(user);
     const result = await service.create({
-      trackerUid: 1,
+      trackerUid: '1', // bigint как string
       email: 'a@a.a',
       login: 'login',
       display: 'User',
@@ -87,7 +87,7 @@ describe('UserService', () => {
   it('should not create user if exists', async () => {
     userRepository.findOne.mockResolvedValue({ id: '1' });
     const result = await service.create({
-      trackerUid: 1,
+      trackerUid: '1', // bigint как string
       email: 'a@a.a',
       login: 'login',
       display: 'User',
@@ -129,12 +129,12 @@ describe('UserService', () => {
   });
 
   it('should find user by trackerUid', async () => {
-    const user = { id: '1', trackerUid: 1, rates: [] };
+    const user = { id: '1', trackerUid: '1', rates: [] };
     userRepository.findOne.mockResolvedValue(user);
-    const result = await service.findByTrackerUid(1);
+    const result = await service.findByTrackerUid('1');
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.trackerUid).toBe(1);
+      expect(result.data.trackerUid).toBe('1');
     }
   });
 });
