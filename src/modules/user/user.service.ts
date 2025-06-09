@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Raw } from 'typeorm';
 import { UserEntity } from './user.entity';
 import { IUser } from './models/user.model';
 import { IServiceResult } from '@src/shared/types/service-result.type';
@@ -16,6 +16,10 @@ export class UserService {
     private readonly userRepository: Repository<UserEntity>,
   ) {}
 
+  /**
+   * Fetches all users from the database.
+   * @returns A promise that resolves to an array of users or an error message.
+   */
   async findAll(): Promise<IServiceResult<IUser[]>> {
     this.logger.log('Fetching all users');
     const users = await this.userRepository.find({ relations: ['rates'] });
@@ -25,6 +29,11 @@ export class UserService {
     };
   }
 
+  /**
+   * Fetches a user by their ID.
+   * @param id - The ID of the user to fetch.
+   * @returns A promise that resolves to the user or an error message.
+   */
   async findById(id: string): Promise<IServiceResult<IUser>> {
     this.logger.log(`Fetching user with id ${id}`);
     const user = await this.userRepository.findOne({ where: { id }, relations: ['rates'] });
@@ -43,9 +52,20 @@ export class UserService {
     };
   }
 
+  /**
+   * Fetches a user by their tracker UID.
+   * @param trackerUid - The tracker UID of the user to fetch.
+   * @returns A promise that resolves to the user or an error message.
+   */
   async findByTrackerUid(trackerUid: string): Promise<IServiceResult<IUser>> {
     this.logger.log(`Fetching user with trackerUid ${trackerUid}`);
-    const user = await this.userRepository.findOne({ where: { trackerUid }, relations: ['rates'] });
+    // Корректный поиск по массиву trackerUid через TypeORM Raw
+    const user = await this.userRepository.findOne({
+      where: {
+        trackerUid: Raw((alias) => `ARRAY[${trackerUid}]::bigint[] && ${alias}`),
+      },
+      relations: ['rates'],
+    });
     if (!user) {
       this.logger.warn(`User with trackerUid ${trackerUid} not found`);
       return {
@@ -61,6 +81,11 @@ export class UserService {
     };
   }
 
+  /**
+   * Fetches a user by their login.
+   * @param login - The login of the user to fetch.
+   * @returns A promise that resolves to the user or an error message.
+   */
   async findByLogin(login: string): Promise<IServiceResult<IUser>> {
     this.logger.log(`Fetching user with login ${login}`);
     const user = await this.userRepository.findOne({ where: { login }, relations: ['rates'] });
@@ -79,21 +104,37 @@ export class UserService {
     };
   }
 
-  async create(userData: ICreateUser): Promise<IServiceResult<IUser>> {
-    this.logger.log(`Creating user with login ${userData.login}`);
+  /**
+   * Creates a new user.
+   * @param createData - The data for the user to be created.
+   * @returns A promise that resolves to the created user or an error message.
+   */
+  async create(createData: ICreateUser): Promise<IServiceResult<IUser>> {
+    this.logger.log(`Creating user with login ${createData.login}`);
     const existingUser = await this.userRepository.findOne({
-      where: [{ trackerUid: userData.trackerUid }, { email: userData.email }, { login: userData.login }],
+      where: [{ email: createData.email }, { login: createData.login }],
     });
+
     if (existingUser) {
-      this.logger.warn(`User with login ${userData.login} already exists`);
+      this.logger.warn(`User with email ${createData.email} or login ${createData.login} already exists`);
       return {
         success: false,
-        error: 'User with the same trackerUid, email, or login already exists',
+        error: 'User with this email or login already exists',
       };
     }
+
+    const userData = {
+      trackerUid: [createData.trackerUid],
+      display: createData.display,
+      email: createData.email,
+      login: createData.login,
+      roles: createData.roles,
+      dismissed: createData.dismissed,
+    };
+
     const user = this.userRepository.create(userData);
     await this.userRepository.save(user);
-    this.logger.log(`User with login ${userData.login} created successfully`);
+    this.logger.log(`User with login ${createData.login} created successfully`);
     const { rates, ...userDataCreated } = user;
     return {
       success: true,
@@ -101,6 +142,12 @@ export class UserService {
     };
   }
 
+  /**
+   * Updates an existing user.
+   * @param id - The ID of the user to update.
+   * @param updateData - The data to update the user with.
+   * @returns A promise that resolves to the updated user or an error message.
+   */
   async update(id: string, updateData: IUpdateUser): Promise<IServiceResult<IUser>> {
     this.logger.log(`Updating user with id ${id}`);
     const existingUserResult = await this.findById(id);
@@ -128,12 +175,22 @@ export class UserService {
     };
   }
 
+  /**
+   * Deletes a user by their ID.
+   * @param id - The ID of the user to delete.
+   * @returns A promise that resolves when the user is deleted.
+   */
   async delete(id: string): Promise<void> {
     this.logger.log(`Deleting user with id ${id}`);
     await this.userRepository.delete(id);
     this.logger.log(`User with id ${id} deleted successfully`);
   }
 
+  /**
+   * Retrieves the last rate from the user's rates.
+   * @param rates - The rates of the user.
+   * @returns The last rate or null if no rates exist.
+   */
   private lastRate(rates: UserEntity['rates']): number | null {
     if (!rates || rates.length === 0) {
       return null;

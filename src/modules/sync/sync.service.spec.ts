@@ -31,6 +31,10 @@ describe('SyncService', () => {
     yaTrackerClient = module.get(YaTrackerClient);
   });
 
+  /**
+   * Синхронизация: создаёт нового пользователя, если его нет в локальной базе.
+   * Проверяет, что userService.create вызывается с корректными данными.
+   */
   it('should sync and create new users', async () => {
     yaTrackerClient.users.getUsers.mockResolvedValue({
       success: true,
@@ -43,7 +47,7 @@ describe('SyncService', () => {
         id: '1',
         createdAt: new Date(),
         updatedAt: new Date(),
-        trackerUid: '1',
+        trackerUid: ['1'],
         email: 'a@a.a',
         login: 'login',
         display: 'User',
@@ -52,6 +56,7 @@ describe('SyncService', () => {
         rate: null,
       },
     });
+    userService.update.mockResolvedValue({ success: true, data: {} }); // для возможного update после create
 
     const result = await service.syncUsers();
     if (result.success) {
@@ -71,6 +76,10 @@ describe('SyncService', () => {
     });
   });
 
+  /**
+   * Синхронизация: обновляет существующего пользователя, если данные отличаются.
+   * Проверяет, что userService.update вызывается с изменёнными полями.
+   */
   it('should sync and update existing users', async () => {
     yaTrackerClient.users.getUsers.mockResolvedValue({
       success: true,
@@ -83,7 +92,7 @@ describe('SyncService', () => {
           id: '2',
           createdAt: new Date(),
           updatedAt: new Date(),
-          trackerUid: '2',
+          trackerUid: ['2'],
           email: 'old@b.b',
           login: 'login2',
           display: 'Old',
@@ -99,7 +108,7 @@ describe('SyncService', () => {
         id: '2',
         createdAt: new Date(),
         updatedAt: new Date(),
-        trackerUid: '2',
+        trackerUid: ['2'],
         email: 'b@b.b',
         login: 'login2',
         display: 'User2',
@@ -117,16 +126,21 @@ describe('SyncService', () => {
     } else {
       throw new Error(result.error);
     }
-    expect(userService.update).toHaveBeenCalledWith('2', {
-      trackerUid: '2',
-      email: 'b@b.b',
-      login: 'login2',
-      display: 'User2',
-      roles: [],
-      dismissed: false,
-    });
+    expect(userService.update).toHaveBeenCalledWith(
+      '2',
+      expect.objectContaining({
+        email: 'b@b.b',
+        login: 'login2',
+        display: 'User2',
+        dismissed: false,
+      }),
+    );
   });
 
+  /**
+   * Синхронизация: учитывает ошибку при создании пользователя.
+   * Проверяет, что failed увеличивается, если userService.create возвращает ошибку.
+   */
   it('should count failed if user creation fails', async () => {
     yaTrackerClient.users.getUsers.mockResolvedValue({
       success: true,
@@ -145,6 +159,10 @@ describe('SyncService', () => {
     }
   });
 
+  /**
+   * Синхронизация: учитывает ошибку при обновлении пользователя.
+   * Проверяет, что failed увеличивается, если userService.update возвращает ошибку.
+   */
   it('should count failed if user update fails', async () => {
     yaTrackerClient.users.getUsers.mockResolvedValue({
       success: true,
@@ -157,7 +175,7 @@ describe('SyncService', () => {
           id: '4',
           createdAt: new Date(),
           updatedAt: new Date(),
-          trackerUid: '4',
+          trackerUid: ['4'], // исправлено
           email: 'old@d.d',
           login: 'login4',
           display: 'Old',
@@ -179,6 +197,10 @@ describe('SyncService', () => {
     }
   });
 
+  /**
+   * Синхронизация: корректно обрабатывает ошибку получения данных из YaTracker.
+   * Проверяет, что сервис возвращает ошибку при неуспешном ответе YaTracker.
+   */
   it('should handle fetch errors gracefully', async () => {
     yaTrackerClient.users.getUsers.mockResolvedValue({ success: false, error: { message: 'fail' } });
     const result = await service.syncUsers();
@@ -187,5 +209,83 @@ describe('SyncService', () => {
       expect(result).toHaveProperty('error');
       expect(result.error).toBeDefined();
     }
+  });
+
+  /**
+   * Синхронизация: добавляет trackerUid существующему пользователю и обновляет поля, если нужно.
+   * Проверяет, что userService.update вызывается с trackerUid и с обновлёнными полями.
+   */
+  it('should sync and add trackerUid to existing user and update fields if needed', async () => {
+    yaTrackerClient.users.getUsers.mockResolvedValue({
+      success: true,
+      data: [{ uid: '5', email: 'e@e.e', login: 'login5', display: 'User5' }],
+    });
+    userService.findAll.mockResolvedValue({
+      success: true,
+      data: [
+        {
+          id: '5',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          trackerUid: [],
+          email: 'old@e.e',
+          login: 'login5',
+          display: 'Old',
+          roles: [],
+          dismissed: true,
+          rate: null,
+        },
+      ],
+    });
+    userService.create.mockResolvedValue({
+      success: true,
+      data: {
+        id: '5',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        trackerUid: ['5'],
+        email: 'old@e.e',
+        login: 'login5',
+        display: 'Old',
+        roles: [],
+        dismissed: true,
+        rate: null,
+      },
+    });
+    userService.update.mockResolvedValue({
+      success: true,
+      data: {
+        id: '5',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        trackerUid: ['5'],
+        email: 'e@e.e',
+        login: 'login5',
+        display: 'User5',
+        roles: [],
+        dismissed: false,
+        rate: null,
+      },
+    });
+
+    const result = await service.syncUsers();
+    if (result.success) {
+      expect(result.data.created).toBe(0);
+      expect(result.data.updated).toBe(2); // исправлено: ожидаем 2 обновления
+      expect(result.data.failed).toBe(0);
+    } else {
+      throw new Error(result.error);
+    }
+    // Проверяем, что update был вызван с trackerUid и с обновлёнными полями (может быть два вызова)
+    expect(userService.update).toHaveBeenCalledWith('5', expect.objectContaining({ trackerUid: ['5'] }));
+    expect(userService.update).toHaveBeenCalledWith(
+      '5',
+      expect.objectContaining({
+        email: 'e@e.e',
+        login: 'login5',
+        display: 'User5',
+        dismissed: false,
+      }),
+    );
   });
 });

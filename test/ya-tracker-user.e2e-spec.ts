@@ -65,6 +65,7 @@ describe('YaTracker E2E Tests - User', () => {
       const result = await yaTrackerClient.users.getUsers();
       expect(result).toBeDefined();
       if (result.success) {
+        console.log('Users:', result.data);
         expect(result.data).toBeInstanceOf(Array);
       }
     });

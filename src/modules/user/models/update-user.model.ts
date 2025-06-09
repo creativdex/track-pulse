@@ -2,7 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
 export const UpdateUserSchema = z.object({
-  trackerUid: z.string().optional(),
+  trackerUid: z.array(z.string()).optional(),
 
   display: z.string().min(2).max(100).optional(),
 

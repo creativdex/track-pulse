@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { configModuleOptions } from './shared/config/config.module-options';
 import { UserRateModule } from './modules/user-rate/user-rate.module';
 import { UserModule } from './modules/user/user.module';
+import { AggregationModule } from './modules/aggregation/aggregation.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { UserModule } from './modules/user/user.module';
     SyncModule,
     UserRateModule,
     UserModule,
+    AggregationModule,
   ],
 })
 export class AppModule {}

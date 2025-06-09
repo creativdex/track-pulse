@@ -345,161 +345,252 @@ describe('YaTrackerTaskClient', () => {
         strategy: undefined,
       });
     });
-  });
 
-  describe('searchTasksToArray', () => {
-    it('should collect all tasks into array', async () => {
-      const mockTasks: ITrackerTask[] = [
-        {
-          self: 'https://api.tracker.yandex.net/v2/issues/TEST-1',
-          id: 'test-id-1',
-          key: 'TEST-1',
-          version: 1,
-          lastCommentUpdatedAt: '2024-01-01T00:00:00.000Z',
-          summary: 'Test Task 1',
-          updatedBy: {
-            self: 'https://api.tracker.yandex.net/v2/users/user1',
-            id: 'user1',
-            display: 'Test User',
-          },
-          description: 'Test description 1',
-          type: {
-            self: 'https://api.tracker.yandex.net/v2/issueTypes/1',
-            id: '1',
-            key: 'task',
-            display: 'Task',
-          },
-          priority: {
-            self: 'https://api.tracker.yandex.net/v2/priorities/2',
-            id: '2',
-            key: 'normal',
-            display: 'Normal',
-          },
-          createdAt: '2024-01-01T00:00:00.000Z',
-          followers: [],
-          createdBy: {
-            self: 'https://api.tracker.yandex.net/v2/users/user1',
-            id: 'user1',
-            display: 'Test User',
-          },
-          votes: 0,
-          assignee: {
-            self: 'https://api.tracker.yandex.net/v2/users/user1',
-            id: 'user1',
-            display: 'Test User',
-          },
-          project: {
-            primary: {
-              self: 'https://api.tracker.yandex.net/v2/projects/1',
-              id: '1',
-              display: 'Test Project',
+    describe('searchTasksToArray', () => {
+      it('should collect all tasks into array', async () => {
+        const mockTasks: ITrackerTask[] = [
+          {
+            self: 'https://api.tracker.yandex.net/v2/issues/TEST-1',
+            id: 'test-id-1',
+            key: 'TEST-1',
+            version: 1,
+            lastCommentUpdatedAt: '2024-01-01T00:00:00.000Z',
+            summary: 'Test Task 1',
+            updatedBy: {
+              self: 'https://api.tracker.yandex.net/v2/users/user1',
+              id: 'user1',
+              display: 'Test User',
             },
-            secondary: [],
+            description: 'Test description 1',
+            type: {
+              self: 'https://api.tracker.yandex.net/v2/issueTypes/1',
+              id: '1',
+              key: 'task',
+              display: 'Task',
+            },
+            priority: {
+              self: 'https://api.tracker.yandex.net/v2/priorities/2',
+              id: '2',
+              key: 'normal',
+              display: 'Normal',
+            },
+            createdAt: '2024-01-01T00:00:00.000Z',
+            followers: [],
+            createdBy: {
+              self: 'https://api.tracker.yandex.net/v2/users/user1',
+              id: 'user1',
+              display: 'Test User',
+            },
+            votes: 0,
+            assignee: {
+              self: 'https://api.tracker.yandex.net/v2/users/user1',
+              id: 'user1',
+              display: 'Test User',
+            },
+            project: {
+              primary: {
+                self: 'https://api.tracker.yandex.net/v2/projects/1',
+                id: '1',
+                display: 'Test Project',
+              },
+              secondary: [],
+            },
+            queue: {
+              self: 'https://api.tracker.yandex.net/v2/queues/TEST',
+              id: 'test-queue-id',
+              key: 'TEST',
+              display: 'Test Queue',
+            },
+            updatedAt: '2024-01-01T00:00:00.000Z',
+            status: {
+              self: 'https://api.tracker.yandex.net/v2/statuses/1',
+              id: '1',
+              key: 'open',
+              display: 'Open',
+            },
+            favorite: false,
           },
-          queue: {
-            self: 'https://api.tracker.yandex.net/v2/queues/TEST',
-            id: 'test-queue-id',
-            key: 'TEST',
-            display: 'Test Queue',
-          },
-          updatedAt: '2024-01-01T00:00:00.000Z',
-          status: {
-            self: 'https://api.tracker.yandex.net/v2/statuses/1',
-            id: '1',
-            key: 'open',
-            display: 'Open',
-          },
-          favorite: false,
-        },
-      ];
+        ];
 
-      jest.spyOn(taskClient, 'searchTasks').mockImplementation(async (request, options, onPage) => {
-        await onPage(mockTasks, { page: 1, isLast: true });
+        jest.spyOn(taskClient, 'searchTasks').mockImplementation(async (request, options, onPage) => {
+          await onPage(mockTasks, { page: 1, isLast: true });
+        });
+
+        const logSpy = jest.spyOn(taskClient['logger'], 'log');
+
+        const result = await taskClient.searchTasksToArray({ queue: 'TEST' });
+
+        expect(result).toEqual({ success: true, data: mockTasks });
+        expect(logSpy).toHaveBeenCalledWith('Search completed', { totalTasks: 1 });
       });
 
-      const logSpy = jest.spyOn(taskClient['logger'], 'log');
+      it('should return empty array if no tasks found', async () => {
+        jest.spyOn(taskClient, 'searchTasks').mockImplementation(async (request, options, onPage) => {
+          await onPage([], { page: 1, isLast: true });
+        });
 
-      const result = await taskClient.searchTasksToArray({ queue: 'TEST' });
+        const logSpy = jest.spyOn(taskClient['logger'], 'log');
 
-      expect(result).toEqual(mockTasks);
-      expect(logSpy).toHaveBeenCalledWith('Search completed', { totalTasks: 1 });
-    });
-  });
+        const result = await taskClient.searchTasksToArray({ queue: 'EMPTY' });
 
-  describe('Convenience search methods', () => {
-    const onPageMock = jest.fn();
-    let searchTasksSpy: jest.SpyInstance;
-
-    beforeEach(() => {
-      searchTasksSpy = jest.spyOn(taskClient, 'searchTasks').mockResolvedValue(undefined);
-    });
-
-    it('should search tasks by queue', async () => {
-      await taskClient.searchTasksByQueue('TEST', {}, onPageMock);
-
-      expect(searchTasksSpy).toHaveBeenCalledWith({ queue: 'TEST' }, {}, onPageMock);
-    });
-
-    it('should search tasks by single key', async () => {
-      await taskClient.searchTasksByKeys('TEST-1', {}, onPageMock);
-
-      expect(searchTasksSpy).toHaveBeenCalledWith({ keys: 'TEST-1' }, {}, onPageMock);
-    });
-
-    it('should search tasks by multiple keys', async () => {
-      await taskClient.searchTasksByKeys(['TEST-1', 'TEST-2'], {}, onPageMock);
-
-      expect(searchTasksSpy).toHaveBeenCalledWith({ keys: ['TEST-1', 'TEST-2'] }, {}, onPageMock);
-    });
-
-    it('should search tasks by filter', async () => {
-      const filter = { status: 'open' };
-      const order = 'created';
-
-      await taskClient.searchTasksByFilter(filter, onPageMock, order, {});
-
-      expect(searchTasksSpy).toHaveBeenCalledWith({ filter, order }, {}, onPageMock);
-    });
-
-    it('should search tasks by query', async () => {
-      const query = 'Queue: TEST AND Status: Open';
-
-      await taskClient.searchTasksByQuery(query, {}, onPageMock);
-
-      expect(searchTasksSpy).toHaveBeenCalledWith({ query }, {}, onPageMock);
-    });
-  });
-
-  describe('buildSearchQueryParams', () => {
-    it('should build empty params when no expand provided', () => {
-      const result = taskClient['buildSearchQueryParams']();
-      expect(result).toEqual({});
-    });
-
-    it('should build params with transitions expand', () => {
-      const result = taskClient['buildSearchQueryParams']({ transitions: true });
-      expect(result).toEqual({ expand: 'transitions' });
-    });
-
-    it('should build params with attachments expand', () => {
-      const result = taskClient['buildSearchQueryParams']({ attachments: true });
-      expect(result).toEqual({ expand: 'attachments' });
-    });
-
-    it('should build params with both expands', () => {
-      const result = taskClient['buildSearchQueryParams']({
-        transitions: true,
-        attachments: true,
+        expect(result).toEqual({ success: true, data: [] });
+        expect(logSpy).toHaveBeenCalledWith('Search completed', { totalTasks: 0 });
       });
-      expect(result).toEqual({ expand: 'transitions,attachments' });
+
+      it('should accumulate tasks from multiple pages', async () => {
+        const page1: ITrackerTask[] = [
+          {
+            ...mockBaseClient,
+            id: 'id-1',
+            key: 'KEY-1',
+            self: 'url-1',
+            version: 1,
+            lastCommentUpdatedAt: '',
+            summary: '',
+            updatedBy: { self: '', id: '', display: '' },
+            description: '',
+            type: { self: '', id: '', key: '', display: '' },
+            priority: { self: '', id: '', key: '', display: '' },
+            createdAt: '',
+            followers: [],
+            createdBy: { self: '', id: '', display: '' },
+            votes: 0,
+            assignee: { self: '', id: '', display: '' },
+            project: { primary: { self: '', id: '', display: '' }, secondary: [] },
+            queue: { self: '', id: '', key: '', display: '' },
+            updatedAt: '',
+            status: { self: '', id: '', key: '', display: '' },
+            favorite: false,
+          },
+        ];
+        const page2: ITrackerTask[] = [
+          {
+            ...mockBaseClient,
+            id: 'id-2',
+            key: 'KEY-2',
+            self: 'url-2',
+            version: 1,
+            lastCommentUpdatedAt: '',
+            summary: '',
+            updatedBy: { self: '', id: '', display: '' },
+            description: '',
+            type: { self: '', id: '', key: '', display: '' },
+            priority: { self: '', id: '', key: '', display: '' },
+            createdAt: '',
+            followers: [],
+            createdBy: { self: '', id: '', display: '' },
+            votes: 0,
+            assignee: { self: '', id: '', display: '' },
+            project: { primary: { self: '', id: '', display: '' }, secondary: [] },
+            queue: { self: '', id: '', key: '', display: '' },
+            updatedAt: '',
+            status: { self: '', id: '', key: '', display: '' },
+            favorite: false,
+          },
+        ];
+
+        jest.spyOn(taskClient, 'searchTasks').mockImplementation(async (request, options, onPage) => {
+          await onPage(page1, { page: 1, isLast: false });
+          await onPage(page2, { page: 2, isLast: true });
+        });
+
+        const logSpy = jest.spyOn(taskClient['logger'], 'log');
+
+        const result = await taskClient.searchTasksToArray({ queue: 'MULTI' });
+
+        expect(result).toEqual({ success: true, data: [...page1, ...page2] });
+        expect(logSpy).toHaveBeenCalledWith('Search completed', { totalTasks: 2 });
+      });
+
+      it('should pass options to searchTasks', async () => {
+        const searchTasksSpy = jest
+          .spyOn(taskClient, 'searchTasks')
+          .mockImplementation(async (request, options, onPage) => {
+            await onPage([], { page: 1, isLast: true });
+          });
+
+        const options: ISearchTasksOptions = { expand: { transitions: true } };
+        await taskClient.searchTasksToArray({ queue: 'TEST' }, options);
+
+        expect(searchTasksSpy).toHaveBeenCalledWith({ queue: 'TEST' }, options, expect.any(Function));
+      });
     });
 
-    it('should not include false expand options', () => {
-      const result = taskClient['buildSearchQueryParams']({
-        transitions: false,
-        attachments: true,
+    describe('Convenience search methods', () => {
+      const onPageMock = jest.fn();
+      let searchTasksSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        searchTasksSpy = jest.spyOn(taskClient, 'searchTasks').mockResolvedValue(undefined);
       });
-      expect(result).toEqual({ expand: 'attachments' });
+
+      it('should search tasks by queue', async () => {
+        await taskClient.searchTasksByQueue('TEST', {}, onPageMock);
+
+        expect(searchTasksSpy).toHaveBeenCalledWith({ queue: 'TEST' }, {}, onPageMock);
+      });
+
+      it('should search tasks by single key', async () => {
+        await taskClient.searchTasksByKeys('TEST-1', {}, onPageMock);
+
+        expect(searchTasksSpy).toHaveBeenCalledWith({ keys: 'TEST-1' }, {}, onPageMock);
+      });
+
+      it('should search tasks by multiple keys', async () => {
+        await taskClient.searchTasksByKeys(['TEST-1', 'TEST-2'], {}, onPageMock);
+
+        expect(searchTasksSpy).toHaveBeenCalledWith({ keys: ['TEST-1', 'TEST-2'] }, {}, onPageMock);
+      });
+
+      it('should search tasks by filter', async () => {
+        const filter = { status: 'open' };
+        const order = 'created';
+
+        await taskClient.searchTasksByFilter(filter, onPageMock, order, {});
+
+        expect(searchTasksSpy).toHaveBeenCalledWith({ filter, order }, {}, onPageMock);
+      });
+
+      it('should search tasks by query', async () => {
+        const query = 'Queue: TEST AND Status: Open';
+
+        await taskClient.searchTasksByQuery(query, {}, onPageMock);
+
+        expect(searchTasksSpy).toHaveBeenCalledWith({ query }, {}, onPageMock);
+      });
+    });
+
+    describe('buildSearchQueryParams', () => {
+      it('should build empty params when no expand provided', () => {
+        const result = taskClient['buildSearchQueryParams']();
+        expect(result).toEqual({});
+      });
+
+      it('should build params with transitions expand', () => {
+        const result = taskClient['buildSearchQueryParams']({ transitions: true });
+        expect(result).toEqual({ expand: 'transitions' });
+      });
+
+      it('should build params with attachments expand', () => {
+        const result = taskClient['buildSearchQueryParams']({ attachments: true });
+        expect(result).toEqual({ expand: 'attachments' });
+      });
+
+      it('should build params with both expands', () => {
+        const result = taskClient['buildSearchQueryParams']({
+          transitions: true,
+          attachments: true,
+        });
+        expect(result).toEqual({ expand: 'transitions,attachments' });
+      });
+
+      it('should not include false expand options', () => {
+        const result = taskClient['buildSearchQueryParams']({
+          transitions: false,
+          attachments: true,
+        });
+        expect(result).toEqual({ expand: 'attachments' });
+      });
     });
   });
 });

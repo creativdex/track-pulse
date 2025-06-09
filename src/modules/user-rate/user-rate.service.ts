@@ -18,6 +18,11 @@ export class UserRateService {
     private readonly userRepository: Repository<UserEntity>,
   ) {}
 
+  /**
+   * Creates a new user rate.
+   * @param userRateData - The data for the user rate to be created.
+   * @returns A promise that resolves to the created user rate or an error message.
+   */
   async create(userRateData: ICreateUserRate): Promise<IServiceResult<IUserRate>> {
     const user = await this.userRepository.findOne({ where: { id: userRateData.userId } });
     if (!user) {

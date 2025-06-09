@@ -25,6 +25,9 @@ describe('UserService', () => {
     userRepository = module.get(getRepositoryToken(UserEntity));
   });
 
+  /**
+   * Возвращает всех пользователей с их последним rate.
+   */
   it('should return all users', async () => {
     const users = [{ id: '1', rates: [{ rate: 5, createdAt: new Date() }] }];
     userRepository.find.mockResolvedValue(users);
@@ -36,6 +39,9 @@ describe('UserService', () => {
     }
   });
 
+  /**
+   * Возвращает пользователя по id, если найден.
+   */
   it('should return user by id', async () => {
     const user = { id: '1', rates: [{ rate: 7, createdAt: new Date() }] };
     userRepository.findOne.mockResolvedValue(user);
@@ -47,6 +53,9 @@ describe('UserService', () => {
     }
   });
 
+  /**
+   * Возвращает ошибку, если пользователь по id не найден.
+   */
   it('should return error if user by id not found', async () => {
     userRepository.findOne.mockResolvedValue(null);
     const result = await service.findById('2');
@@ -56,12 +65,15 @@ describe('UserService', () => {
     }
   });
 
+  /**
+   * Создаёт пользователя, если такого email/login ещё нет.
+   */
   it('should create user if not exists', async () => {
     userRepository.findOne.mockResolvedValue(null);
     const user = {
       id: '1',
       rates: [],
-      trackerUid: '1', // bigint как string
+      trackerUid: ['1'], // исправлено: массив строк
       email: 'a@a.a',
       login: 'login',
       display: 'User',
@@ -71,7 +83,7 @@ describe('UserService', () => {
     userRepository.create.mockReturnValue(user);
     userRepository.save.mockResolvedValue(user);
     const result = await service.create({
-      trackerUid: '1', // bigint как string
+      trackerUid: '1', // строка
       email: 'a@a.a',
       login: 'login',
       display: 'User',
@@ -84,10 +96,13 @@ describe('UserService', () => {
     }
   });
 
+  /**
+   * Не создаёт пользователя, если такой email/login уже есть.
+   */
   it('should not create user if exists', async () => {
-    userRepository.findOne.mockResolvedValue({ id: '1' });
+    userRepository.findOne.mockResolvedValue({ id: '1', trackerUid: ['1'] }); // исправлено: массив
     const result = await service.create({
-      trackerUid: '1', // bigint как string
+      trackerUid: '1',
       email: 'a@a.a',
       login: 'login',
       display: 'User',
@@ -100,6 +115,9 @@ describe('UserService', () => {
     }
   });
 
+  /**
+   * Обновляет пользователя, если он существует.
+   */
   it('should update user if exists', async () => {
     const user = { id: '1', rates: [] };
     userRepository.findOne.mockResolvedValueOnce(user); // findById
@@ -113,6 +131,9 @@ describe('UserService', () => {
     }
   });
 
+  /**
+   * Возвращает ошибку, если обновляемого пользователя не существует.
+   */
   it('should return error if update user not found', async () => {
     userRepository.findOne.mockResolvedValue(null);
     const result = await service.update('2', { login: 'new' });
@@ -122,19 +143,44 @@ describe('UserService', () => {
     }
   });
 
+  /**
+   * Удаляет пользователя по id.
+   */
   it('should delete user', async () => {
     userRepository.delete.mockResolvedValue(undefined);
     await expect(service.delete('1')).resolves.toBeUndefined();
     expect(userRepository.delete).toHaveBeenCalledWith('1');
   });
 
+  /**
+   * Находит пользователя по trackerUid (поиск по массиву).
+   */
   it('should find user by trackerUid', async () => {
-    const user = { id: '1', trackerUid: '1', rates: [] };
+    const user = { id: '1', trackerUid: ['1'], rates: [] }; // исправлено: массив
     userRepository.findOne.mockResolvedValue(user);
     const result = await service.findByTrackerUid('1');
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.trackerUid).toBe('1');
+      expect(result.data.trackerUid).toEqual(['1']); // исправлено: массив
+    }
+  });
+
+  it('should return error if user not found by trackerUid', async () => {
+    userRepository.findOne.mockResolvedValue(null);
+    const result = await service.findByTrackerUid('not-exist');
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toMatch(/not found/);
+    }
+  });
+
+  it('should return null rate if rates is empty', async () => {
+    const user = { id: '3', rates: [], trackerUid: ['3'] };
+    userRepository.find.mockResolvedValue([user]);
+    const result = await service.findAll();
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data[0].rate).toBeNull();
     }
   });
 });

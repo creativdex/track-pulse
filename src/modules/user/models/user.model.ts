@@ -8,7 +8,7 @@ export const UserSchema = z.object({
 
   updatedAt: z.date(),
 
-  trackerUid: z.string(),
+  trackerUid: z.array(z.string()),
 
   display: z.string().min(2).max(100),
 

@@ -58,6 +58,21 @@ export class UserController {
   @ApiResponse({
     status: HttpStatus.OK,
     type: UserDto,
+    description: 'Get user by Tracker UID',
+  })
+  @ApiKeyRequired()
+  @Get('tracker/:uid')
+  async getUserByTrackerId(@Param('uid') uid: string): Promise<UserDto> {
+    const result = await this.userService.findByTrackerUid(uid);
+    if (!result.success) {
+      throw new Error(`Failed to get user: ${result.error}`);
+    }
+    return result.data;
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: UserDto,
     description: 'Get user by Login',
   })
   @ApiKeyRequired()

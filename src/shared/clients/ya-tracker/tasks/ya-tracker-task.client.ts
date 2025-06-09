@@ -93,7 +93,7 @@ export class YaTrackerTaskClient {
   async searchTasksToArray(
     searchRequest: ISearchTasksRequest,
     options: ISearchTasksOptions = {},
-  ): Promise<ITrackerTask[]> {
+  ): Promise<IClientResult<ITrackerTask[]>> {
     const allTasks: ITrackerTask[] = [];
 
     await this.searchTasks(searchRequest, options, (tasks: ITrackerTask[]) => {
@@ -101,7 +101,7 @@ export class YaTrackerTaskClient {
     });
 
     this.logger.log(`Search completed`, { totalTasks: allTasks.length });
-    return allTasks;
+    return { success: true, data: allTasks };
   }
 
   /**
