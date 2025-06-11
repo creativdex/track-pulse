@@ -1,10 +1,11 @@
 import { Body, Controller, Delete, Get, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ApiResponse } from '@nestjs/swagger';
-import { ApiKeyRequired } from '@src/shared/access/decorators/api-key.decorator';
 import { CreateUserDto } from './models/create-user.model';
 import { UserDto } from './models/user.model';
 import { UpdateUserDto } from './models/update-user.model';
+import { ApplyGuard } from '@src/shared/access/decorators/apply-guard.decorator';
+import { EGuardType } from '@src/shared/access/guard-type.enum';
 
 @Controller('user')
 export class UserController {
@@ -15,7 +16,7 @@ export class UserController {
     type: UserDto,
     description: 'Create user',
   })
-  @ApiKeyRequired()
+  @ApplyGuard(EGuardType.JWT)
   @Post()
   async createUser(@Body() body: CreateUserDto): Promise<UserDto> {
     const result = await this.userService.create(body);
@@ -30,7 +31,7 @@ export class UserController {
     type: [UserDto],
     description: 'Get all users',
   })
-  @ApiKeyRequired()
+  @ApplyGuard(EGuardType.JWT)
   @Get('all')
   async getAllUsers(): Promise<UserDto[]> {
     const result = await this.userService.findAll();
@@ -45,7 +46,7 @@ export class UserController {
     type: UserDto,
     description: 'Get user by ID',
   })
-  @ApiKeyRequired()
+  @ApplyGuard(EGuardType.JWT)
   @Get(':id')
   async getUser(@Param('id') id: string): Promise<UserDto> {
     const result = await this.userService.findById(id);
@@ -60,7 +61,7 @@ export class UserController {
     type: UserDto,
     description: 'Get user by Tracker UID',
   })
-  @ApiKeyRequired()
+  @ApplyGuard(EGuardType.JWT)
   @Get('tracker/:uid')
   async getUserByTrackerId(@Param('uid') uid: string): Promise<UserDto> {
     const result = await this.userService.findByTrackerUid(uid);
@@ -75,7 +76,7 @@ export class UserController {
     type: UserDto,
     description: 'Get user by Login',
   })
-  @ApiKeyRequired()
+  @ApplyGuard(EGuardType.JWT)
   @Get('login/:login')
   async getUserByLogin(@Param('login') login: string): Promise<UserDto> {
     const result = await this.userService.findByLogin(login);
@@ -90,7 +91,7 @@ export class UserController {
     type: UserDto,
     description: 'Get user by Login',
   })
-  @ApiKeyRequired()
+  @ApplyGuard(EGuardType.JWT)
   @Patch(':id')
   async updateUserById(@Param('id') id: string, @Body() body: UpdateUserDto): Promise<UserDto> {
     const result = await this.userService.update(id, body);
@@ -104,7 +105,7 @@ export class UserController {
     status: HttpStatus.NO_CONTENT,
     description: 'Delete user by ID',
   })
-  @ApiKeyRequired()
+  @ApplyGuard(EGuardType.JWT)
   @Delete(':id')
   async deleteUserById(@Param('id') id: string): Promise<void> {
     await this.userService.delete(id);

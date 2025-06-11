@@ -23,11 +23,11 @@ export class ApiKeyGuard implements CanActivate {
     });
 
     if (!apiKeyHeader) {
-      throw new UnauthorizedException('apiKey.notFound');
+      throw new UnauthorizedException('API key is required');
     }
 
     if (apiKeyHeader !== this.configService.getOrThrow<string>('SECRET__API_KEY')) {
-      throw new UnauthorizedException('apiKey.notValid');
+      throw new UnauthorizedException('API key is not valid');
     }
 
     return true;

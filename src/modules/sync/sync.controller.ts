@@ -1,8 +1,10 @@
 import { Controller, HttpStatus, Post } from '@nestjs/common';
 import { SyncService } from './sync.service';
 import { ApiResponse } from '@nestjs/swagger';
-import { ApiKeyRequired } from '@src/shared/access/decorators/api-key.decorator';
 import { SyncUserResultDto } from './sync.model';
+import { ApplyGuard } from '@src/shared/access/decorators/apply-guard.decorator';
+import { EGuardType } from '@src/shared/access/guard-type.enum';
+import { ERoleUser } from '@src/shared/access/roles/role.enum';
 
 @Controller('sync')
 export class SyncController {
@@ -13,7 +15,7 @@ export class SyncController {
     type: SyncUserResultDto,
     description: 'Sync users with YaTracker',
   })
-  @ApiKeyRequired()
+  @ApplyGuard(EGuardType.JWT, ERoleUser.ADMIN)
   @Post('users')
   async syncUsers(): Promise<SyncUserResultDto> {
     const result = await this.syncService.syncUsers();

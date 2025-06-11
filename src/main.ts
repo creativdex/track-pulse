@@ -24,6 +24,7 @@ async function bootstrap(): Promise<void> {
     .setDescription('API for Track Pulse')
     .setVersion('1.0.0')
     .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header' })
+    .addBearerAuth()
     .addServer(`http://localhost:${appPort}`);
 
   const domainHost = configService.get<string>('ENV__DOMAIN_HOST');
