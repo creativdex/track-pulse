@@ -6,10 +6,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfigFactory } from './shared/config/typeorm.config';
 import { ConfigService } from '@nestjs/config';
 import { configModuleOptions } from './shared/config/config.module-options';
-import { UserRateModule } from './modules/user-rate/user-rate.module';
-import { UserModule } from './modules/user/user.module';
 import { AggregationModule } from './modules/aggregation/aggregation.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { TrackerModule } from './modules/tracker/tracker.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
@@ -21,10 +21,10 @@ import { AuthModule } from './modules/auth/auth.module';
     ConfigModule.forRoot(configModuleOptions),
     FeedbackModule,
     SyncModule,
-    UserRateModule,
-    UserModule,
     AggregationModule,
+    TrackerModule,
     AuthModule,
+    UserModule,
   ],
 })
 export class AppModule {}

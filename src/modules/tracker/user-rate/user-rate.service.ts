@@ -1,21 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UserRateEntity } from './user-rate.entity';
+import { UserTrackerRateEntity } from './user-rate.entity';
 import { Repository } from 'typeorm';
-import { ICreateUserRate } from './models/create-user-rate.model';
+import { ICreateUserTrackerRate } from './models/create-user-rate.model';
 import { IServiceResult } from '@src/shared/types/service-result.type';
-import { IUserRate } from './models/user-rate.model';
-import { UserEntity } from '../user/user.entity';
+import { IUserTrackerRate } from './models/user-rate.model';
+import { UserTrackerEntity } from '../user/user.entity';
 
 @Injectable()
-export class UserRateService {
-  protected readonly logger = new Logger(UserRateService.name);
+export class UserTrackerRateService {
+  protected readonly logger = new Logger(UserTrackerRateService.name);
 
   constructor(
-    @InjectRepository(UserRateEntity)
-    private readonly userRateRepository: Repository<UserRateEntity>,
-    @InjectRepository(UserEntity)
-    private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(UserTrackerRateEntity)
+    private readonly userRateRepository: Repository<UserTrackerRateEntity>,
+    @InjectRepository(UserTrackerEntity)
+    private readonly userRepository: Repository<UserTrackerEntity>,
   ) {}
 
   /**
@@ -23,7 +23,7 @@ export class UserRateService {
    * @param userRateData - The data for the user rate to be created.
    * @returns A promise that resolves to the created user rate or an error message.
    */
-  async create(userRateData: ICreateUserRate): Promise<IServiceResult<IUserRate>> {
+  async create(userRateData: ICreateUserTrackerRate): Promise<IServiceResult<IUserTrackerRate>> {
     const user = await this.userRepository.findOne({ where: { id: userRateData.userId } });
     if (!user) {
       this.logger.warn(`User with id ${userRateData.userId} not found`);

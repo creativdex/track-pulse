@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserRateService } from './user-rate.service';
+import { UserTrackerRateService } from './user-rate.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UserRateEntity } from './user-rate.entity';
-import { UserEntity } from '../user/user.entity';
+import { UserTrackerRateEntity } from './user-rate.entity';
+import { UserTrackerEntity } from '../user/user.entity';
 
 const mockUserRepository = () => ({
   findOne: jest.fn(),
@@ -12,23 +12,23 @@ const mockUserRateRepository = () => ({
   save: jest.fn(),
 });
 
-describe('UserRateService', () => {
-  let service: UserRateService;
+describe('UserTrackerRateService', () => {
+  let service: UserTrackerRateService;
   let userRepository: ReturnType<typeof mockUserRepository>;
   let userRateRepository: ReturnType<typeof mockUserRateRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        UserRateService,
-        { provide: getRepositoryToken(UserRateEntity), useFactory: mockUserRateRepository },
-        { provide: getRepositoryToken(UserEntity), useFactory: mockUserRepository },
+        UserTrackerRateService,
+        { provide: getRepositoryToken(UserTrackerRateEntity), useFactory: mockUserRateRepository },
+        { provide: getRepositoryToken(UserTrackerEntity), useFactory: mockUserRepository },
       ],
     }).compile();
 
-    service = module.get<UserRateService>(UserRateService);
-    userRepository = module.get(getRepositoryToken(UserEntity));
-    userRateRepository = module.get(getRepositoryToken(UserRateEntity));
+    service = module.get<UserTrackerRateService>(UserTrackerRateService);
+    userRepository = module.get(getRepositoryToken(UserTrackerEntity));
+    userRateRepository = module.get(getRepositoryToken(UserTrackerRateEntity));
   });
 
   it('should return error if user not found', async () => {

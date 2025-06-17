@@ -3,7 +3,8 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
-import { IAuthedUser, ITokenAuthData } from '../models/auth.model';
+import { IUser } from '../../user/models/user.model';
+import { ITokenAuthData } from '../models/auth.model';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -14,7 +15,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.getOrThrow<string>('SECRET__JWT_KEY'),
+      secretOrKey: configService.getOrThrow<string>('SECRET__JWT_ACCESS_KEY'),
     });
   }
 
@@ -23,7 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
    * @param payload Decoded JWT payload
    * @returns User data for request object
    */
-  async validate(payload: ITokenAuthData): Promise<IAuthedUser> {
+  async validate(payload: ITokenAuthData): Promise<IUser> {
     const result = await this.authService.validateJwtToken(payload.sub);
 
     if (!result.success) {

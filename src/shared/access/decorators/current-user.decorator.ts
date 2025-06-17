@@ -1,12 +1,13 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { IAuthedUser, IAuthedUserRequest } from '@src/modules/auth/models/auth.model';
+import { IAuthedUserRequest } from '@src/modules/auth/models/auth.model';
+import { IUser } from '@src/modules/user/models/user.model';
 
 /**
  * Декоратор для получения данных текущего аутентифицированного пользователя
  * @example
  * // Получить все данные пользователя
  * @Get('profile')
- * getProfile(@CurrentUser() user: IAuthedUser) {
+ * getProfile(@CurrentUser() user: IUser) {
  *   return user;
  * }
  *
@@ -16,7 +17,7 @@ import { IAuthedUser, IAuthedUserRequest } from '@src/modules/auth/models/auth.m
  *   return { userId };
  * }
  */
-export const CurrentUser = createParamDecorator((data: keyof IAuthedUser | undefined, ctx: ExecutionContext) => {
+export const CurrentUser = createParamDecorator((data: keyof IUser | undefined, ctx: ExecutionContext) => {
   const request = ctx.switchToHttp().getRequest<IAuthedUserRequest>();
   const user = request.user;
 
@@ -26,7 +27,7 @@ export const CurrentUser = createParamDecorator((data: keyof IAuthedUser | undef
 
   if (data) {
     if (!(data in user)) {
-      throw new Error(`Field "${data}" does not exist on the user object.`);
+      throw new Error(`Field "${String(data)}" does not exist on the user object.`);
     }
     return user[data];
   }

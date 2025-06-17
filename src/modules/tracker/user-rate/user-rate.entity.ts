@@ -7,10 +7,10 @@ import {
   JoinColumn,
   ManyToOne,
 } from 'typeorm';
-import { UserEntity } from '../user/user.entity';
+import { UserTrackerEntity } from '../user/user.entity';
 
-@Entity('user_rates')
-export class UserRateEntity {
+@Entity('user_tracker_rates')
+export class UserTrackerRateEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -23,9 +23,9 @@ export class UserRateEntity {
   @Column('decimal', { precision: 10, scale: 2 })
   rate: number;
 
-  @ManyToOne(() => UserEntity, { onDelete: 'CASCADE', nullable: false })
+  @ManyToOne(() => UserTrackerEntity, { onDelete: 'CASCADE', nullable: false })
   @JoinColumn({ name: 'user_id' })
-  user: UserEntity;
+  user: UserTrackerEntity;
 
   @Column({ name: 'user_id', nullable: false })
   userId: string;

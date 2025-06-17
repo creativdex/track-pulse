@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SyncService } from './sync.service';
-import { UserService } from '../user/user.service';
+import { UserTrackerService } from '../tracker/user/user.service';
 import { YaTrackerClient } from '@src/shared/clients/ya-tracker/ya-tracker.client';
 
 const mockUserService = () => ({
@@ -21,13 +21,13 @@ describe('SyncService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SyncService,
-        { provide: UserService, useFactory: mockUserService },
+        { provide: UserTrackerService, useFactory: mockUserService },
         { provide: YaTrackerClient, useFactory: mockYaTrackerClient },
       ],
     }).compile();
 
     service = module.get<SyncService>(SyncService);
-    userService = module.get(UserService);
+    userService = module.get(UserTrackerService);
     yaTrackerClient = module.get(YaTrackerClient);
   });
 

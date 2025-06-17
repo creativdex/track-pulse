@@ -1,12 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { YaTrackerClient } from '@src/shared/clients/ya-tracker/ya-tracker.client';
-import {
-  IProjectSummary,
-  IWorkloadQuery,
-  IWorkloadTask,
-  IWorkloadTaskWithParent,
-} from './models/workload-aggregation.model';
-import { ITrackerWorklog } from '@src/shared/clients/ya-tracker/worklog/models/worklog.model';
+import { IWorkload, IWorkloadQuery } from './models/workload-aggregation.model';
 import { IServiceResult } from '@src/shared/types/service-result.type';
 
 @Injectable()
@@ -15,7 +9,7 @@ export class AggregationService {
 
   constructor(protected readonly yaTrackerClient: YaTrackerClient) {}
 
-  async workload(params: IWorkloadQuery): Promise<IServiceResult<Record<string, IProjectSummary>>> {
+  async workload(params: IWorkloadQuery): Promise<IServiceResult<IWorkload>> {
     const { fromIso, toIso, fromShort, toShort } = this.getPeriodDates(params);
 
     this.logger.debug(`Fetching tasks from ${fromIso} to ${toIso}`);
@@ -31,93 +25,20 @@ export class AggregationService {
 
     this.logger.debug(`Found ${allTasks.data.length} tasks for the period ${fromIso} to ${toIso}`);
 
-    // 1. Собираем задачи в Map
-    const issuesByKey = new Map<string, IWorkloadTaskWithParent>(
-      allTasks.data.map((issue) => [
-        issue.key,
-        {
-          key: issue.key,
-          createdAt: issue.createdAt,
-          summary: issue.summary,
-          type: issue.type.display,
-          project: issue.project?.primary?.display || 'Unknown Project',
-          worklogs: [],
-          hoursSpent: 0,
-          children: [],
-          parent: issue.parent ? { key: issue.parent.key } : undefined,
-        },
-      ]),
-    );
+    // const worklogs = await this.yaTrackerClient.worklog.getByQueryWorklog({
+    //   createdAt: { from: fromIso, to: toIso },
+    // });
 
-    // 2. Вкладываем задачи друг в друга по parent
-    for (const issue of issuesByKey.values()) {
-      if (issue.parent?.key && issuesByKey.has(issue.parent.key)) {
-        issuesByKey.get(issue.parent.key)!.children.push(issue);
-      }
-    }
-
-    // 3. Группируем по проекту только верхнеуровневые (без parent или parent не найден)
-    const hierarchy: Record<string, IWorkloadTaskWithParent[]> = {};
-    for (const issue of issuesByKey.values()) {
-      if (!issue.parent?.key || !issuesByKey.has(issue.parent.key)) {
-        if (!hierarchy[issue.project]) hierarchy[issue.project] = [];
-        hierarchy[issue.project].push(issue);
-      }
-    }
-
-    // 4. Получаем ворклоги
-    const worklogs = await this.yaTrackerClient.worklog.getByQueryWorklog({
-      createdAt: { from: fromIso, to: toIso },
-    });
-
-    const worklogMap = new Map<string, ITrackerWorklog[]>();
-    if (worklogs.success && worklogs.data.length > 0) {
-      worklogs.data.forEach((worklog) => {
-        const arr = worklogMap.get(worklog.issue.key) ?? [];
-        arr.push(worklog);
-        worklogMap.set(worklog.issue.key, arr);
-      });
-    }
-
-    // 5. Рекурсивно считаем часы и строим итоговую структуру
-    const result: Record<string, IProjectSummary> = {};
-    for (const [project, tasks] of Object.entries(hierarchy)) {
-      const tasksWithHours = tasks.map((task) => this.calcTaskHours(task, worklogMap));
-      const hoursSpent = tasksWithHours.reduce((sum, task) => sum + task.hoursSpent, 0);
-      // Можно взять summary первого таска или сделать свою логику
-      const summary = tasksWithHours[0]?.project ?? project;
-      result[project] = {
-        summary,
-        hoursSpent,
-        tasks: tasksWithHours,
-      };
-    }
-
-    return { success: true, data: result };
-  }
-
-  // Рекурсивно считает часы и собирает ворклоги для всей иерархии
-  private calcTaskHours(task: IWorkloadTaskWithParent, worklogMap: Map<string, ITrackerWorklog[]>): IWorkloadTask {
-    const worklogs = worklogMap.get(task.key) ?? [];
-    const selfHours = worklogs.reduce((sum, wl) => sum + this.parseISODurationToHours(wl.duration), 0);
-    const selfWorklogs = worklogs.map((wl) => wl.comment);
-
-    let children: IWorkloadTask[] = [];
-    let childrenHours = 0;
-
-    if (task.children && task.children.length > 0) {
-      children = task.children.map((child) => {
-        const res = this.calcTaskHours(child, worklogMap);
-        childrenHours += res.hoursSpent;
-        return res;
-      });
-    }
+    // 1. Получаем проекты из задач
+    // const projects = new Map<>();
 
     return {
-      ...task,
-      hoursSpent: selfHours + childrenHours,
-      worklogs: selfWorklogs,
-      children,
+      success: true,
+      data: {
+        items: [],
+        projects: [],
+        sprints: [],
+      },
     };
   }
 

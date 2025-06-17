@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { AuthedUserShortDto, authedUserShortModel } from './auth.model';
 
 export const loginAuthModel = z.object({
   login: z.string().min(3, 'Login is required'),
@@ -40,13 +39,26 @@ export class RefreshTokenDto extends createZodDto(refreshTokenModel) {
   refreshToken: string;
 }
 
+/**
+ * Login response model with tokens and user info
+ * Contains minimal user information for security
+ */
 export const loginAuthedUserModel = z.object({
   accessToken: z.string().min(20, 'Access token is required'),
   refreshToken: z.string().min(20, 'Refresh token is required'),
-  user: authedUserShortModel,
+  user: z.object({
+    id: z.string().uuid(),
+    login: z.string().min(3, 'Login is required'),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    role: z.string(),
+    isActive: z.boolean(),
+    lastLoginAt: z.date().nullish(),
+  }),
 });
 
 export type ILoginAuthedUser = z.infer<typeof loginAuthedUserModel>;
+
 export class LoginAuthedUserDto extends createZodDto(loginAuthedUserModel) {
   @ApiProperty({
     description: 'Access token for the user',
@@ -62,7 +74,24 @@ export class LoginAuthedUserDto extends createZodDto(loginAuthedUserModel) {
 
   @ApiProperty({
     description: 'Authenticated user information',
-    type: AuthedUserShortDto,
+    type: 'object',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      login: { type: 'string' },
+      firstName: { type: 'string', required: false },
+      lastName: { type: 'string', required: false },
+      role: { type: 'string' },
+      isActive: { type: 'boolean' },
+      lastLoginAt: { type: 'string', format: 'date-time', required: false },
+    },
   })
-  user: AuthedUserShortDto;
+  user: {
+    id: string;
+    login: string;
+    firstName?: string;
+    lastName?: string;
+    role: string;
+    isActive: boolean;
+    lastLoginAt?: Date | null;
+  };
 }

@@ -1,7 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
-import { UserRateEntity } from '../user-rate/user-rate.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-@Entity('users')
+@Entity('auth')
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -12,24 +11,27 @@ export class UserEntity {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @Column('bigint', { name: 'tracker_uid', array: true, nullable: false, unique: false })
-  trackerUid: string[];
-
-  @Column({ nullable: true })
-  display: string;
-
-  @Column({ unique: true })
-  email: string;
-
   @Column({ unique: true })
   login: string;
 
-  @Column('simple-array', { default: '' })
-  roles: string[];
+  @Column({ nullable: false })
+  password: string;
 
-  @Column({ type: 'boolean', default: false })
-  dismissed: boolean;
+  @Column({ nullable: false })
+  role: string;
 
-  @OneToMany(() => UserRateEntity, (rate) => rate.user, { cascade: true })
-  rates: UserRateEntity[];
+  @Column({ name: 'refresh_token', nullable: true })
+  refreshToken: string;
+
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
+
+  @Column({ name: 'first_name', nullable: true })
+  firstName: string;
+
+  @Column({ name: 'last_name', nullable: true })
+  lastName: string;
+
+  @Column({ name: 'last_login_at', nullable: true, default: null })
+  lastLoginAt: Date;
 }

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserService } from './user.service';
+import { UserTrackerService } from './user.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UserEntity } from './user.entity';
+import { UserTrackerEntity } from './user.entity';
 
 const mockUserRepository = () => ({
   find: jest.fn(),
@@ -13,16 +13,19 @@ const mockUserRepository = () => ({
 });
 
 describe('UserService', () => {
-  let service: UserService;
+  let service: UserTrackerService;
   let userRepository: ReturnType<typeof mockUserRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UserService, { provide: getRepositoryToken(UserEntity), useFactory: mockUserRepository }],
+      providers: [
+        UserTrackerService,
+        { provide: getRepositoryToken(UserTrackerEntity), useFactory: mockUserRepository },
+      ],
     }).compile();
 
-    service = module.get<UserService>(UserService);
-    userRepository = module.get(getRepositoryToken(UserEntity));
+    service = module.get<UserTrackerService>(UserTrackerService);
+    userRepository = module.get(getRepositoryToken(UserTrackerEntity));
   });
 
   /**

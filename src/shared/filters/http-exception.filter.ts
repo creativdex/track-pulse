@@ -2,65 +2,50 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@n
 import { ZodValidationException } from 'nestjs-zod';
 import { FastifyReply, FastifyRequest } from 'fastify';
 
-interface Exception {
-  status: number;
+interface ResponseData {
+  statusCode: number;
+  timestamp: string;
+  path: string;
   message: string;
-  url: string;
-}
-
-interface ZodExceptionData {
-  status: number;
-  message: string;
-  url: string;
-  data: unknown;
-}
-
-interface HttpExceptionData {
-  status: number | null;
-  message: string;
-  url: string | null;
+  errors?: any[];
+  details?: Record<string, any>;
 }
 
 @Catch(HttpException, ZodValidationException)
 export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger: Logger;
-
-  constructor() {
-    this.logger = new Logger(HttpExceptionFilter.name);
-  }
+  private readonly logger = new Logger(HttpExceptionFilter.name);
 
   catch(exception: HttpException | ZodValidationException, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<FastifyReply>();
     const request = ctx.getRequest<FastifyRequest>();
     const status = exception.getStatus();
-    const info = exception.getResponse() as Exception | string;
+    const info = exception.getResponse();
 
-    let exceptionData: ZodExceptionData | HttpExceptionData;
-
-    if (exception instanceof ZodValidationException) {
-      const zodError = exception.getZodError();
-      exceptionData = {
-        status: exception.getStatus(),
-        message: exception.message,
-        url: request.url,
-        data: zodError.errors,
-      };
-    } else {
-      exceptionData = {
-        status: typeof info === 'string' ? null : info?.status,
-        message: typeof info === 'string' ? info : info?.message,
-        url: typeof info === 'string' ? null : info?.url,
-      };
-    }
-    const data = {
+    const responseData: ResponseData = {
       statusCode: status,
-      message: exception.message,
       timestamp: new Date().toISOString(),
       path: request.url,
-      exception: exceptionData,
+      message: exception.message,
     };
-    this.logger.error({ message: exception.message, data: data });
-    response.status(status).send(data);
+
+    // Добавляем дополнительные данные в зависимости от типа исключения
+    if (exception instanceof ZodValidationException) {
+      responseData.errors = exception.getZodError().errors;
+    } else if (typeof info === 'object' && info !== null) {
+      // Добавляем любые дополнительные поля из объекта ответа
+      const responseInfo = info as Record<string, any>;
+      const additionalInfo = { ...responseInfo };
+
+      if ('message' in additionalInfo) {
+        delete additionalInfo.message;
+      }
+      if (Object.keys(additionalInfo).length > 0) {
+        responseData.details = additionalInfo;
+      }
+    }
+
+    this.logger.error(`Exception: ${exception.message}`, responseData);
+    response.status(status).send(responseData);
   }
 }

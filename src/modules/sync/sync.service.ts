@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { YaTrackerClient } from '@src/shared/clients/ya-tracker/ya-tracker.client';
-import { UserService } from '../user/user.service';
-import { IUser } from '../user/models/user.model';
+import { UserTrackerService } from '../tracker/user/user.service';
+import { IUserTracker } from '../tracker/user/models/user.model';
 import { IServiceResult } from '@src/shared/types/service-result.type';
 import { ISyncUserResult } from './sync.model';
 
@@ -10,7 +10,7 @@ export class SyncService {
   protected readonly logger = new Logger(SyncService.name);
   constructor(
     protected readonly yaTrackerClient: YaTrackerClient,
-    protected readonly userService: UserService,
+    protected readonly userService: UserTrackerService,
   ) {}
 
   async syncUsers(): Promise<IServiceResult<ISyncUserResult>> {
@@ -71,7 +71,7 @@ export class SyncService {
         roles: string[];
         dismissed: boolean;
       }> = [];
-      const toUpdate: Array<{ user: IUser; trackerUid: string[] }> = [];
+      const toUpdate: Array<{ user: IUserTracker; trackerUid: string[] }> = [];
       const alreadyActual = new Set<string>();
 
       for (const group of grouped.values()) {

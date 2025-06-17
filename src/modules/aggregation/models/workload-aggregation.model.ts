@@ -2,63 +2,43 @@ import { ApiProperty } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-export type IWorkloadTask = {
-  key: string;
-  createdAt: string;
-  summary: string;
-  description?: string;
-  type: string;
-  project: string;
-  worklogs: string[];
-  hoursSpent: number;
-  children: IWorkloadTask[];
-};
+export const WorkloadItemSchema = z.object({
+  key: z.string(),
+  display: z.string(),
+});
 
-export const WorkloadTaskSchema: z.ZodType<IWorkloadTask> = z.lazy(() =>
-  z.object({
-    key: z.string(),
-    createdAt: z.string(),
-    summary: z.string(),
-    description: z.string().optional(),
-    type: z.string(),
-    project: z.string(),
-    worklogs: z.array(z.string()),
-    hoursSpent: z.number(),
-    children: z.array(WorkloadTaskSchema),
-  }),
-);
+export const WorkloadTaskSchema = z.object({
+  key: z.string(),
+  createdAt: z.string(),
+  summary: z.string(),
+  description: z.string().optional(),
+  type: z.string(),
+  worklogs: z.array(z.string()),
+  hoursSpent: z.number(),
+  parent: WorkloadItemSchema.optional(),
+  project: WorkloadItemSchema.optional(),
+  sprint: WorkloadItemSchema.optional(),
+});
 
-export type IWorkloadTaskWithParent = IWorkloadTask & {
-  parent?: { key: string };
-};
-
-export const WorkloadTaskWithParentSchema: z.ZodType<IWorkloadTaskWithParent> = z.lazy(() =>
-  z.object({
-    key: z.string(),
-    createdAt: z.string(),
-    summary: z.string(),
-    description: z.string().optional(),
-    type: z.string(),
-    project: z.string(),
-    worklogs: z.array(z.string()),
-    hoursSpent: z.number(),
-    children: z.array(WorkloadTaskWithParentSchema),
-    parent: z
-      .object({
-        key: z.string(),
-      })
-      .optional(),
-  }),
-);
-
-export class WorkloadTaskDto extends createZodDto(WorkloadTaskSchema) {}
+export const WorkloadSchema = z.object({
+  items: z.array(WorkloadItemSchema),
+  projects: z.array(WorkloadItemSchema),
+  sprints: z.array(WorkloadItemSchema),
+});
 
 export const WorkloadQuerySchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
 });
 
+export type IWorkloadItem = z.infer<typeof WorkloadItemSchema>;
+export type IWorkloadTask = z.infer<typeof WorkloadTaskSchema>;
 export type IWorkloadQuery = z.infer<typeof WorkloadQuerySchema>;
+export type IWorkload = z.infer<typeof WorkloadSchema>;
+
+export class WorkloadItemDto extends createZodDto(WorkloadItemSchema) {}
+export class WorkloadTaskDto extends createZodDto(WorkloadTaskSchema) {}
+export class WorkloadDto extends createZodDto(WorkloadSchema) {}
 
 export class WorkloadQueryDto extends createZodDto(WorkloadQuerySchema) {
   @ApiProperty({ type: Date, required: false })
@@ -67,20 +47,3 @@ export class WorkloadQueryDto extends createZodDto(WorkloadQuerySchema) {
   @ApiProperty({ type: Date, required: false })
   to?: string;
 }
-
-export class WorkloadTaskWithParentDto extends createZodDto(WorkloadTaskWithParentSchema) {}
-
-export const WorkloadProjectSummarySchema = z.object({
-  summary: z.string(),
-  hoursSpent: z.number(),
-  tasks: z.array(WorkloadTaskWithParentSchema),
-});
-export class WorkloadProjectSummaryDto extends createZodDto(WorkloadProjectSummarySchema) {}
-
-export type IProjectSummary = z.infer<typeof WorkloadProjectSummarySchema>;
-
-export const WorkloadProjectsSummarySchema = z.record(WorkloadProjectSummarySchema);
-
-export type IWorkloadProjectsSummary = z.infer<typeof WorkloadProjectsSummarySchema>;
-
-export class WorkloadProjectsSummaryDto extends createZodDto(WorkloadProjectsSummarySchema) {}

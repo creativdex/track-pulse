@@ -1,11 +1,11 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-export const CreateUserRateSchema = z.object({
+export const CreateUserTrackerRateSchema = z.object({
   rate: z.number().describe("The employee's rate is RUB per hour"),
   userId: z.string().uuid().describe('Unique identifier of the user who gave the rate'),
 });
 
-export type ICreateUserRate = z.infer<typeof CreateUserRateSchema>;
+export type ICreateUserTrackerRate = z.infer<typeof CreateUserTrackerRateSchema>;
 
-export class CreateUserRateDto extends createZodDto(CreateUserRateSchema) {}
+export class CreateUserTrackerRateDto extends createZodDto(CreateUserTrackerRateSchema) {}
