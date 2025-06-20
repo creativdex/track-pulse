@@ -10,12 +10,20 @@ import { PAGINATION_CONSTANTS } from './ya-tracker.const';
 import { YaTrackerUserClient } from './users/ya-tracker-user.client';
 import { YaTrackerWorklogClient } from './worklog/ya-tracker-worklog.client';
 import { YaTrackerEntityClient } from './entity/entity.client';
+import * as jose from 'jose';
 
 @Injectable()
 export class YaTrackerClient extends AbstractHttpClient {
   private readonly logger = new Logger(YaTrackerClient.name);
   private readonly cloudOrgId: string;
   private readonly oauthToken: string;
+  private iamToken?: string;
+  private iamTokenExpiry?: number;
+  private readonly useIamAuth: boolean;
+
+  private readonly serviceAccountId: string;
+  private readonly serviceAccountIdKey: string;
+  private readonly serviceAccountPrivateKey: string;
 
   public readonly tasks: YaTrackerTaskClient;
   public readonly users: YaTrackerUserClient;
@@ -28,6 +36,12 @@ export class YaTrackerClient extends AbstractHttpClient {
 
     this.cloudOrgId = configService.getOrThrow<string>('ENV__YA_TRACKER_ORG_ID');
     this.oauthToken = configService.getOrThrow<string>('SECRET__YA_TRACKER_OAUTH_TOKEN');
+
+    // IAM конфигурация (опциональная)
+    this.useIamAuth = configService.get<boolean>('ENV__YA_TRACKER_USE_IAM', false);
+    this.serviceAccountId = configService.get<string>('ENV__YA_TRACKER_SERVICE_ACC_ID') || '';
+    this.serviceAccountIdKey = configService.get<string>('SECRET__YA_TRACKER_ID_KEY') || '';
+    this.serviceAccountPrivateKey = configService.get<string>('SECRET__YA_TRACKER_PRIVATE_KEY') || '';
 
     this.tasks = new YaTrackerTaskClient(this);
     this.users = new YaTrackerUserClient(this);
@@ -48,7 +62,7 @@ export class YaTrackerClient extends AbstractHttpClient {
     const enhancedOptions: IHttpRequestOptions<TRequestBody> = {
       ...options,
       headers: {
-        ...this.getTrackerHeaders(),
+        ...(await this.getAuthHeaders()),
         ...options.headers,
       },
     };
@@ -82,7 +96,7 @@ export class YaTrackerClient extends AbstractHttpClient {
         const reqOptions: IHttpRequestOptions<TRequest> = {
           ...options,
           params: { ...baseParams, ...options.params },
-          headers: { ...this.getTrackerHeaders(), ...options.headers },
+          headers: { ...(await this.getAuthHeaders()), ...options.headers },
         };
 
         const response = await this.sendRequestRawResult<TResponse, TRequest>(reqOptions, operation);
@@ -141,7 +155,7 @@ export class YaTrackerClient extends AbstractHttpClient {
             page: String(page),
             ...options.params,
           },
-          headers: { ...this.getTrackerHeaders(), ...options.headers },
+          headers: { ...(await this.getAuthHeaders()), ...options.headers },
         };
 
         const response = await this.sendRequestRawResult<TResponse, TRequest>(reqOptions, operation);
@@ -204,7 +218,7 @@ export class YaTrackerClient extends AbstractHttpClient {
           perPage: '1',
           page: '1',
         },
-        headers: { ...this.getTrackerHeaders(), ...options.headers },
+        headers: { ...(await this.getAuthHeaders()), ...options.headers },
       },
       `${operation}_strategy_detection`,
     );
@@ -253,7 +267,7 @@ export class YaTrackerClient extends AbstractHttpClient {
             perPage: '1',
             page: '1',
           },
-          headers: { ...this.getTrackerHeaders(), ...options.headers },
+          headers: { ...(await this.getAuthHeaders()), ...options.headers },
         },
         `${operation}_pagination_check`,
       );
@@ -276,7 +290,7 @@ export class YaTrackerClient extends AbstractHttpClient {
             scrollType: 'sorted',
             perScroll: '1',
           },
-          headers: { ...this.getTrackerHeaders(), ...options.headers },
+          headers: { ...(await this.getAuthHeaders()), ...options.headers },
         },
         `${operation}_scroll_check`,
       );
@@ -293,15 +307,166 @@ export class YaTrackerClient extends AbstractHttpClient {
   }
 
   /**
+   * Получает IAM токен для авторизации в API Яндекс.Трекера
+   * @returns Объект с IAM токеном
+   */
+  public async getIamToken(): Promise<IClientResult<{ iamToken: string }>> {
+    const jwtToken = await this.generateJwtToken();
+    const response = await this.sendRequestCustomBaseUrl<{ iamToken: string }>(
+      {
+        method: 'POST',
+        endpoint: 'https://iam.api.cloud.yandex.net/iam/v1/tokens',
+        data: { jwt: jwtToken },
+      },
+      'getIamToken',
+    );
+    return response;
+  }
+
+  /**
+   * Генерирует JWT токен для авторизации через IAM
+   * @returns Сгенерированный JWT токен
+   */
+  private async generateJwtToken(): Promise<string> {
+    // 1.1. Формирование header
+    const header = {
+      typ: 'JWT',
+      alg: 'PS256' as const,
+      kid: this.serviceAccountIdKey,
+    };
+
+    // 1.2. Формирование payload
+    const payload = {
+      aud: 'https://iam.api.cloud.yandex.net/iam/v1/tokens',
+      iss: this.serviceAccountId,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
+    };
+
+    // 1.3. Подготовка приватного ключа
+    let privateKeyPem = this.serviceAccountPrivateKey.trim();
+
+    // Убираем комментарий Yandex Cloud если он есть
+    // Формат: "PLEASE DO NOT REMOVE THIS LINE! Yandex.Cloud SA Key ID <key-id>\n-----BEGIN PRIVATE KEY-----"
+    if (privateKeyPem.includes('PLEASE DO NOT REMOVE THIS LINE!')) {
+      // Извлекаем только часть с ключом (от -----BEGIN до -----END)
+      const beginIndex = privateKeyPem.indexOf('-----BEGIN PRIVATE KEY-----');
+      if (beginIndex !== -1) {
+        privateKeyPem = privateKeyPem.substring(beginIndex);
+      }
+    }
+
+    // Добавляем заголовок и футер если их нет
+    if (!privateKeyPem.startsWith('-----BEGIN')) {
+      privateKeyPem = `-----BEGIN PRIVATE KEY-----\n${privateKeyPem}\n-----END PRIVATE KEY-----`;
+    }
+
+    // Заменяем \n на реальные переносы строк если нужно
+    privateKeyPem = privateKeyPem.replace(/\\n/g, '\n');
+
+    this.logger.debug('Private key format check', {
+      startsWithBegin: privateKeyPem.startsWith('-----BEGIN'),
+      endsWithEnd: privateKeyPem.endsWith('-----END PRIVATE KEY-----'),
+      length: privateKeyPem.length,
+    });
+
+    try {
+      // 1.4. Создание подписи и JWT токена
+      const privateKey = await jose.importPKCS8(privateKeyPem, 'PS256');
+      const jwt = await new jose.SignJWT(payload).setProtectedHeader(header).sign(privateKey);
+
+      return jwt;
+    } catch (error) {
+      this.logger.error('Failed to generate JWT token', {
+        error: this.extractErrorDetails(error),
+        keyStartsWith: privateKeyPem.substring(0, 50),
+        keyLength: privateKeyPem.length,
+      });
+      throw new Error(`JWT generation failed: ${this.extractErrorDetails(error)}`);
+    }
+  }
+
+  /**
    * Формирует заголовки для авторизации в API Яндекс.Трекера
    * @returns Объект с заголовками авторизации
    */
-  private getTrackerHeaders(): Record<string, string> {
+  private getTrackerOAuthHeaders(): Record<string, string> {
     return {
       Authorization: `OAuth ${this.oauthToken}`,
       Host: 'api.tracker.yandex.net',
       'X-Cloud-Org-ID': this.cloudOrgId,
     };
+  }
+
+  /**
+   * Формирует заголовки для авторизации через IAM в API Яндекс.Трекера
+   * @returns Объект с заголовками авторизации
+   */
+  private async getTrackerIamHeadersAsync(): Promise<Record<string, string>> {
+    await this.ensureValidIamToken();
+
+    return {
+      Authorization: `Bearer ${this.iamToken}`,
+      Host: 'api.tracker.yandex.net',
+      'X-Cloud-Org-ID': this.cloudOrgId,
+    };
+  }
+
+  /**
+   * Универсальный метод для получения заголовков авторизации
+   * Автоматически выбирает между IAM и OAuth в зависимости от конфигурации
+   * @returns Объект с заголовками авторизации
+   */
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    if (
+      this.useIamAuth == false &&
+      this.serviceAccountId &&
+      this.serviceAccountIdKey &&
+      this.serviceAccountPrivateKey
+    ) {
+      try {
+        return await this.getTrackerIamHeadersAsync();
+      } catch (error) {
+        this.logger.warn('Failed to get IAM token, falling back to OAuth', { error: this.extractErrorDetails(error) });
+        return this.getTrackerOAuthHeaders();
+      }
+    }
+
+    return this.getTrackerOAuthHeaders();
+  }
+
+  /**
+   * Проверяет, истек ли IAM токен
+   * @returns true если токен истек или отсутствует
+   */
+  private isIamTokenExpired(): boolean {
+    if (!this.iamToken || !this.iamTokenExpiry) {
+      return true;
+    }
+
+    // Обновляем токен за 5 минут до истечения
+    const fiveMinutesInSeconds = 5 * 60;
+    return Date.now() / 1000 > this.iamTokenExpiry - fiveMinutesInSeconds;
+  }
+
+  /**
+   * Обновляет IAM токен если необходимо
+   * @returns Promise<void>
+   */
+  private async ensureValidIamToken(): Promise<void> {
+    if (this.isIamTokenExpired()) {
+      this.logger.debug('IAM token expired or missing, refreshing...');
+      const result = await this.getIamToken();
+
+      if (result.success && result.data) {
+        this.iamToken = result.data.iamToken;
+        // IAM токены живут 12 часов, но мы будем обновлять через 11 часов для безопасности
+        this.iamTokenExpiry = Math.floor(Date.now() / 1000) + 11 * 60 * 60;
+        this.logger.debug('IAM token refreshed successfully');
+      } else {
+        throw new Error('Failed to refresh IAM token');
+      }
+    }
   }
 
   /**

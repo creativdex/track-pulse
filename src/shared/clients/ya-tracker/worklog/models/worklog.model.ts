@@ -19,7 +19,7 @@ export type ITrackerWorklogUser = z.infer<typeof TrackerWorklogUserSchema>;
 
 export const TrackerWorklogSchema = z.object({
   self: z.string(),
-  id: z.string(),
+  id: z.number(),
   version: z.string(),
   issue: TrackerWorklogIssueSchema,
   comment: z.string(),

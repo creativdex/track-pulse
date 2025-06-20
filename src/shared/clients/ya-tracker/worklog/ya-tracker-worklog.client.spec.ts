@@ -3,6 +3,15 @@ import { YaTrackerClient } from '../ya-tracker.client';
 import { EContentType, EHttpMethod } from '@src/shared/abstract/http-client/http-client.abstract.enum';
 import { YaTrackerWorklogClient } from './ya-tracker-worklog.client';
 
+// Mock для jose
+jest.mock('jose', () => ({
+  importPKCS8: jest.fn().mockResolvedValue('mock-private-key'),
+  SignJWT: jest.fn().mockImplementation(() => ({
+    setProtectedHeader: jest.fn().mockReturnThis(),
+    sign: jest.fn().mockResolvedValue('mock-jwt-token'),
+  })),
+}));
+
 describe('YaTrackerWorklogClient', () => {
   let worklogClient: YaTrackerWorklogClient;
   let baseClient: YaTrackerClient;

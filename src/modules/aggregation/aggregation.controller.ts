@@ -6,7 +6,7 @@ import { ApplyGuard } from '@src/shared/access/decorators/apply-guard.decorator'
 import { EGuardType } from '@src/shared/access/guard-type.enum';
 import { ERoleUser } from '@src/shared/access/roles/role.enum';
 
-@Controller('aggregation')
+@Controller('aggregations')
 export class AggregationController {
   constructor(private readonly aggregationService: AggregationService) {}
 
@@ -15,7 +15,7 @@ export class AggregationController {
     description: 'Returns workload data grouped by project',
     type: WorkloadDto,
   })
-  @ApplyGuard(EGuardType.JWT, ERoleUser.VIEWER)
+  @ApplyGuard(EGuardType.JWT, ERoleUser.ADMIN)
   @Get('workload')
   async workload(@Query() query: WorkloadQueryDto): Promise<WorkloadDto> {
     const result = await this.aggregationService.workload(query);

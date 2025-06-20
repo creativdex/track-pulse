@@ -18,11 +18,19 @@ export class UserTrackerService {
 
   /**
    * Fetches all users from the database.
+   * @param includeDismissed - Whether to include dismissed users (default: false).
    * @returns A promise that resolves to an array of users or an error message.
    */
-  async findAll(): Promise<IServiceResult<IUserTracker[]>> {
-    this.logger.log('Fetching all users');
-    const users = await this.userRepository.find({ relations: ['rates'] });
+  async findAll(includeDismissed: boolean = false): Promise<IServiceResult<IUserTracker[]>> {
+    this.logger.log(`Fetching all users with includeDismissed=${includeDismissed}`);
+
+    const whereCondition = includeDismissed ? {} : { dismissed: false };
+    const users = await this.userRepository.find({
+      where: whereCondition,
+      relations: ['rates'],
+    });
+
+    this.logger.log(`Found ${users.length} users`);
     return {
       success: true,
       data: users.map(({ rates, ...user }) => ({ ...user, rate: this.lastRate(rates) })),

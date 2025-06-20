@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, HttpException, HttpStatus, Param, Patch, Body } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ERoleUser } from '@src/shared/access/roles/role.enum';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiResponse } from '@nestjs/swagger';
 import { ApplyGuard } from '@src/shared/access/decorators/apply-guard.decorator';
 import { EGuardType } from '@src/shared/access/guard-type.enum';
 import { UserDto } from './models/user.model';
@@ -12,7 +12,6 @@ import { FindUserQueryByIdDto } from './models/find-user.model';
 import { ActivateUserQueryDto } from './models/activate-user.model';
 import { DeleteUserQueryDto } from './models/delete-user.model';
 
-@ApiTags('users')
 @Controller('users')
 @ApplyGuard(EGuardType.JWT, ERoleUser.ADMIN)
 export class UserController {

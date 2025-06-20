@@ -3,6 +3,15 @@ import { SyncService } from './sync.service';
 import { UserTrackerService } from '../tracker/user/user.service';
 import { YaTrackerClient } from '@src/shared/clients/ya-tracker/ya-tracker.client';
 
+// Mock для jose
+jest.mock('jose', () => ({
+  importPKCS8: jest.fn().mockResolvedValue('mock-private-key'),
+  SignJWT: jest.fn().mockImplementation(() => ({
+    setProtectedHeader: jest.fn().mockReturnThis(),
+    sign: jest.fn().mockResolvedValue('mock-jwt-token'),
+  })),
+}));
+
 const mockUserService = () => ({
   findAll: jest.fn(),
   create: jest.fn(),

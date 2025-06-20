@@ -3,12 +3,22 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { YaTrackerModule } from './ya-tracker.module';
 import { YaTrackerClient } from './ya-tracker.client';
 
+// Mock для jose
+jest.mock('jose', () => ({
+  importPKCS8: jest.fn().mockResolvedValue('mock-private-key'),
+  SignJWT: jest.fn().mockImplementation(() => ({
+    setProtectedHeader: jest.fn().mockReturnThis(),
+    sign: jest.fn().mockResolvedValue('mock-jwt-token'),
+  })),
+}));
+
 describe('YaTrackerModule', () => {
   let module: TestingModule;
   let yaTrackerClient: YaTrackerClient;
 
   const mockConfigService = {
     getOrThrow: jest.fn(),
+    get: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -19,6 +29,16 @@ describe('YaTrackerModule', () => {
         SECRET__YA_TRACKER_OAUTH_TOKEN: 'test-oauth-token',
       };
       return config[key as keyof typeof config];
+    });
+
+    mockConfigService.get.mockImplementation((key: string, defaultValue?: any) => {
+      const config = {
+        ENV__YA_TRACKER_USE_IAM: false,
+        ENV__YA_TRACKER_SERVICE_ACC_ID: '',
+        SECRET__YA_TRACKER_ID_KEY: '',
+        SECRET__YA_TRACKER_PRIVATE_KEY: '',
+      };
+      return config[key as keyof typeof config] ?? defaultValue;
     });
 
     module = await Test.createTestingModule({

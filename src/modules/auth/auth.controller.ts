@@ -1,4 +1,14 @@
-import { Controller, Post, Body, Get, HttpException, HttpStatus, Patch, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  HttpException,
+  HttpStatus,
+  Patch,
+  UnauthorizedException,
+  Put,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
 import { LoginAuthDto, LoginAuthedUserDto, RefreshTokenDto } from './models/login-auth.model';
@@ -9,6 +19,7 @@ import { UserDto } from '../user/models/user.model';
 import { ApplyGuard } from '@src/shared/access/decorators/apply-guard.decorator';
 import { EGuardType } from '@src/shared/access/guard-type.enum';
 import { ChangePasswordAuthBodyDto } from './models/change-password-auth.model';
+import { UpdateProfileAuthDto } from './models/update-profile.auth';
 
 @Controller('auth')
 export class AuthController {
@@ -99,9 +110,25 @@ export class AuthController {
 
   @ApiResponse({
     status: HttpStatus.OK,
+    description: 'User profile retrieved successfully',
+    type: UserDto,
+  })
+  @Put('profile')
+  @ApplyGuard(EGuardType.JWT)
+  async updateProfile(@CurrentUser('id') userId: string, @Body() updateData: UpdateProfileAuthDto): Promise<UserDto> {
+    const result = await this.userService.updateUser({ id: userId }, updateData);
+    if (!result.success) {
+      throw new HttpException(result.error || 'User not found', HttpStatus.NOT_FOUND);
+    }
+
+    return result.data;
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'User profile updated successfully',
   })
-  @Patch('change-password')
+  @Patch('profile/password')
   @ApplyGuard(EGuardType.JWT)
   async changePassword(
     @CurrentUser('id') userId: string,

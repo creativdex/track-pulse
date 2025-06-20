@@ -1,13 +1,13 @@
-import { Body, Controller, Delete, Get, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
 import { UserTrackerService } from './user.service';
-import { ApiResponse } from '@nestjs/swagger';
+import { ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { CreateUserTrackerDto } from './models/create-user.model';
 import { UserTrackerDto } from './models/user.model';
 import { UpdateUserTrackerDto } from './models/update-user.model';
 import { ApplyGuard } from '@src/shared/access/decorators/apply-guard.decorator';
 import { EGuardType } from '@src/shared/access/guard-type.enum';
 
-@Controller('user-tracker')
+@Controller('users-tracker')
 export class UserTrackerController {
   constructor(private readonly userService: UserTrackerService) {}
 
@@ -31,10 +31,18 @@ export class UserTrackerController {
     type: [UserTrackerDto],
     description: 'Get all users',
   })
+  @ApiQuery({
+    name: 'includeDismissed',
+    required: false,
+    type: Boolean,
+    description: 'Include dismissed users in the response (default: false)',
+    example: false,
+  })
   @ApplyGuard(EGuardType.JWT)
   @Get('all')
-  async getAllUsers(): Promise<UserTrackerDto[]> {
-    const result = await this.userService.findAll();
+  async getAllUsers(@Query('includeDismissed') includeDismissed?: string): Promise<UserTrackerDto[]> {
+    const includeFlag = includeDismissed === 'true';
+    const result = await this.userService.findAll(includeFlag);
     if (!result.success) {
       throw new Error(`Failed to get all users: ${result.error}`);
     }
@@ -89,7 +97,7 @@ export class UserTrackerController {
   @ApiResponse({
     status: HttpStatus.OK,
     type: UserTrackerDto,
-    description: 'Get user by Login',
+    description: 'Update user by ID',
   })
   @ApplyGuard(EGuardType.JWT)
   @Patch(':id')

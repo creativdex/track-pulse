@@ -4,6 +4,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { YaTrackerClient } from '../src/shared/clients/ya-tracker/ya-tracker.client';
 import { YaTrackerModule } from '../src/shared/clients/ya-tracker/ya-tracker.module';
 
+// Mock для jose
+jest.mock('jose', () => ({
+  importPKCS8: jest.fn().mockResolvedValue('mock-private-key'),
+  SignJWT: jest.fn().mockImplementation(() => ({
+    setProtectedHeader: jest.fn().mockReturnThis(),
+    sign: jest.fn().mockResolvedValue('mock-jwt-token'),
+  })),
+}));
+
 describe('YaTracker E2E Tests', () => {
   let app: NestFastifyApplication;
   let yaTrackerClient: YaTrackerClient;

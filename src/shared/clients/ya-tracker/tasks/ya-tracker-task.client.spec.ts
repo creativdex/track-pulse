@@ -6,6 +6,15 @@ import { ITrackerTask } from './models/task.model';
 import { ISearchTasksRequest, ISearchTasksOptions } from './models/search-tasks.model';
 import { EHttpMethod, EContentType } from '@src/shared/abstract/http-client/http-client.abstract.enum';
 
+// Mock для jose
+jest.mock('jose', () => ({
+  importPKCS8: jest.fn().mockResolvedValue('mock-private-key'),
+  SignJWT: jest.fn().mockImplementation(() => ({
+    setProtectedHeader: jest.fn().mockReturnThis(),
+    sign: jest.fn().mockResolvedValue('mock-jwt-token'),
+  })),
+}));
+
 describe('YaTrackerTaskClient', () => {
   let taskClient: YaTrackerTaskClient;
   let baseClient: YaTrackerClient;

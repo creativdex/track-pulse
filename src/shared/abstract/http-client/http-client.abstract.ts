@@ -95,6 +95,47 @@ export abstract class AbstractHttpClient {
   }
 
   /**
+   * Отправляет HTTP-запрос c кастомным URL и возвращает результат.
+   * @param options - Параметры запроса, включая метод, конечную точку, данные, параметры и заголовки.
+   * @param operation - Описание операции для логирования.
+   * @returns Promise с результатом запроса.
+   */
+  protected async sendRequestCustomBaseUrl<TResponseBody, TRequestBody = unknown>(
+    options: IHttpRequestOptions<TRequestBody>,
+    operation: string,
+  ): Promise<IClientResult<TResponseBody>> {
+    const fullUrl = `${options.endpoint}`;
+    const headers: Record<string, string> = { ...options.headers };
+
+    if (options.contentType && !headers['Content-Type']) {
+      headers['Content-Type'] = options.contentType;
+    }
+
+    const config: AxiosRequestConfig<TRequestBody> = {
+      method: options.method,
+      url: fullUrl,
+      data: options.data,
+      params: options.params,
+      headers,
+      timeout: options.timeout ?? this.defaultTimeout,
+    };
+
+    this.onRequestStart?.(operation, config);
+    try {
+      const requestObservable: Observable<AxiosResponse<TResponseBody>> =
+        this.httpService.request<TResponseBody>(config);
+      const response = await firstValueFrom(requestObservable);
+
+      this.onRequestSuccess?.(operation, config, response);
+      return { success: true, data: response.data };
+    } catch (error: unknown) {
+      const axiosError = this.toAxiosError(error);
+      this.onRequestError?.(operation, config, error, axiosError);
+      return { success: false, error: axiosError };
+    }
+  }
+
+  /**
    * Преобразует любую ошибку в AxiosError
    */
   private toAxiosError(error: unknown): AxiosError {

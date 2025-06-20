@@ -23,6 +23,9 @@ export class UserTrackerRateEntity {
   @Column('decimal', { precision: 10, scale: 2 })
   rate: number;
 
+  @Column({ name: 'comment', nullable: true })
+  comment: string;
+
   @ManyToOne(() => UserTrackerEntity, { onDelete: 'CASCADE', nullable: false })
   @JoinColumn({ name: 'user_id' })
   user: UserTrackerEntity;

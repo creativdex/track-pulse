@@ -7,6 +7,15 @@ import { EHttpMethod } from '@src/shared/abstract/http-client/http-client.abstra
 import { ETrackerEntityType } from './entity.enum';
 import { ITrackerSearchEntity, ITrackerSearchEntityResult } from './models/search-entity.models';
 
+// Mock для jose
+jest.mock('jose', () => ({
+  importPKCS8: jest.fn().mockResolvedValue('mock-private-key'),
+  SignJWT: jest.fn().mockImplementation(() => ({
+    setProtectedHeader: jest.fn().mockReturnThis(),
+    sign: jest.fn().mockResolvedValue('mock-jwt-token'),
+  })),
+}));
+
 describe('YaTrackerEntityClient', () => {
   let entityClient: YaTrackerEntityClient;
   let baseClient: YaTrackerClient;

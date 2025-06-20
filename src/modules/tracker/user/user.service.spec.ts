@@ -31,14 +31,58 @@ describe('UserService', () => {
   /**
    * Возвращает всех пользователей с их последним rate.
    */
-  it('should return all users', async () => {
+  it('should return all users (default: exclude dismissed)', async () => {
     const users = [{ id: '1', rates: [{ rate: 5, createdAt: new Date() }] }];
     userRepository.find.mockResolvedValue(users);
     const result = await service.findAll();
     expect(result.success).toBe(true);
+    expect(userRepository.find).toHaveBeenCalledWith({
+      where: { dismissed: false },
+      relations: ['rates'],
+    });
     if (result.success) {
       expect(result.data[0].id).toBe('1');
       expect(result.data[0]).toHaveProperty('rate', 5);
+    }
+  });
+
+  /**
+   * Возвращает всех пользователей, включая dismissed, когда передан параметр includeDismissed=true.
+   */
+  it('should return all users including dismissed when includeDismissed=true', async () => {
+    const users = [
+      { id: '1', dismissed: false, rates: [{ rate: 5, createdAt: new Date() }] },
+      { id: '2', dismissed: true, rates: [{ rate: 3, createdAt: new Date() }] },
+    ];
+    userRepository.find.mockResolvedValue(users);
+    const result = await service.findAll(true);
+    expect(result.success).toBe(true);
+    expect(userRepository.find).toHaveBeenCalledWith({
+      where: {},
+      relations: ['rates'],
+    });
+    if (result.success) {
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].id).toBe('1');
+      expect(result.data[1].id).toBe('2');
+    }
+  });
+
+  /**
+   * Возвращает только не dismissed пользователей, когда передан параметр includeDismissed=false.
+   */
+  it('should return only non-dismissed users when includeDismissed=false', async () => {
+    const users = [{ id: '1', dismissed: false, rates: [{ rate: 5, createdAt: new Date() }] }];
+    userRepository.find.mockResolvedValue(users);
+    const result = await service.findAll(false);
+    expect(result.success).toBe(true);
+    expect(userRepository.find).toHaveBeenCalledWith({
+      where: { dismissed: false },
+      relations: ['rates'],
+    });
+    if (result.success) {
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe('1');
     }
   });
 

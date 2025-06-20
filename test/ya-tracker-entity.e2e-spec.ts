@@ -11,6 +11,15 @@ import { ETrackerEntityType } from '../src/shared/clients/ya-tracker/entity/enti
 import type { AxiosError } from 'axios';
 import type { IClientResult } from '../src/shared/types/client-result.type';
 
+// Mock для jose
+jest.mock('jose', () => ({
+  importPKCS8: jest.fn().mockResolvedValue('mock-private-key'),
+  SignJWT: jest.fn().mockImplementation(() => ({
+    setProtectedHeader: jest.fn().mockReturnThis(),
+    sign: jest.fn().mockResolvedValue('mock-jwt-token'),
+  })),
+}));
+
 describe('YaTracker E2E Tests - Entity', () => {
   let app: NestFastifyApplication;
   let yaTrackerClient: YaTrackerClient;
