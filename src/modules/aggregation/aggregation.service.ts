@@ -47,7 +47,7 @@ export class AggregationService {
     this.logger.debug(`Found ${allTasks.data.length} tasks for the period ${fromIso} to ${toIso}`);
 
     this.logger.debug(`Fetching worklogs from ${fromIso} to ${toIso}`);
-    const allWorklogs = await this.yaTrackerClient.worklog.getByQueryWorklog({
+    const allWorklogs = await this.yaTrackerClient.worklog.getByQueryAllWorklog({
       createdAt: { from: fromIso, to: toIso },
     });
     if (!allWorklogs.success) {
@@ -90,39 +90,58 @@ export class AggregationService {
     const tasks: IWorkloadTask[] = [];
 
     for (const task of allTasks.data) {
-      const project = { key: task.project.primary.id, display: task.project.primary.display };
-      const sprintArr = task.sprint?.map((s) => ({ key: s.id, display: s.display })) || [];
-      const type = { key: task.type.id, display: task.type.display };
-      const assignee = task.assignee ? { key: task.assignee.id, display: task.assignee.display } : undefined;
+      // Безопасные проверки для вложенных и опциональных полей
+      const project = task.project?.primary
+        ? { key: task.project.primary.id, display: task.project.primary.display }
+        : { key: 'unknown', display: 'Unknown Project' };
+      const sprintArr = Array.isArray(task.sprint)
+        ? (task.sprint
+            .map((s) => (s && s.id && s.display ? { key: s.id, display: s.display } : null))
+            .filter(Boolean) as IWorkloadItem[])
+        : [];
+      const type = task.type
+        ? { key: task.type.id, display: task.type.display }
+        : { key: 'unknown', display: 'Unknown Type' };
+      const assignee =
+        task.assignee && task.assignee.id && task.assignee.display
+          ? { key: task.assignee.id, display: task.assignee.display }
+          : undefined;
+      const status =
+        task.status && task.status.key && task.status.display
+          ? { key: task.status.key, display: task.status.display }
+          : { key: 'unknown', display: 'Unknown Status' };
       const worklogs = worklogByTask.get(task.key) || [];
-      const totalHoursSpent = worklogs.reduce((sum, wl) => sum + (wl.hoursSpent || 0), 0);
-      const totalAmount = worklogs.reduce((sum, wl) => sum + (wl.amount || 0), 0);
+      const totalHoursSpent = (worklogs ?? []).reduce((sum, wl) => sum + (wl?.hoursSpent ?? 0), 0);
+      const totalAmount = (worklogs ?? []).reduce((sum, wl) => sum + (wl?.amount ?? 0), 0);
 
       projects.set(project.key, project);
       sprintArr.forEach((s) => sprints.set(s.key, s));
       types.set(type.key, type);
       if (assignee) assignees.set(assignee.key, assignee);
-      statuses.set(task.status.key, { key: task.status.key, display: task.status.display });
+      statuses.set(status.key, status);
+
+      const deltaTime =
+        task.resolvedAt && task.deadline
+          ? (new Date(task.resolvedAt).getTime() - this.getEndOfDay(task.deadline).getTime()) / 1000 / 3600
+          : null;
 
       tasks.push({
         key: task.key,
         createdAt: task.createdAt,
         deadline: task.deadline || null,
-        resolvedAt: task.resolvedAt || null,
-        deltaTime: task.resolvedAt
-          ? (new Date(task.resolvedAt).getTime() - new Date(task.createdAt).getTime()) / 1000 / 3600
-          : null,
-        summary: task.summary,
-        description: task.description,
+        resolvedAt: task.resolvedAt ? new Date(task.resolvedAt).toISOString().slice(0, 10) : null,
+        deltaTime: Number(deltaTime?.toFixed(1)),
+        summary: task.summary ?? '',
+        description: task.description ?? '',
         worklogs,
         hoursSpent: totalHoursSpent,
         amount: totalAmount,
-        statusKey: task.status.key,
-        typeKey: task.type.key,
-        assigneeId: task.assignee?.id || null,
-        projectId: task.project.primary.id || null,
+        statusKey: task.status?.key ?? 'unknown',
+        typeKey: task.type?.key ?? 'unknown',
+        assigneeId: task.assignee?.id ?? null,
+        projectId: task.project?.primary?.id ?? null,
         sprintKey: sprintArr.length ? sprintArr[sprintArr.length - 1].key : null,
-        parentKey: task.parent?.key || null,
+        parentKey: task.parent?.key ?? null,
       });
     }
 
@@ -188,7 +207,7 @@ export class AggregationService {
     const defaultTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     const fromDate = params.from ? new Date(params.from) : defaultFrom;
-    const toDate = params.to ? new Date(params.to) : defaultTo;
+    const toDate = params.to ? this.getEndOfDay(params.to) : defaultTo;
 
     const toIsoString = (val: Date) => val.toISOString();
     const toShortDate = (val: Date) => val.toISOString().slice(0, 10);
@@ -199,5 +218,11 @@ export class AggregationService {
       fromShort: toShortDate(fromDate),
       toShort: toShortDate(toDate),
     };
+  }
+
+  private getEndOfDay(dateStr: string): Date {
+    const date = new Date(dateStr);
+    date.setHours(23, 59, 59, 999);
+    return date;
   }
 }

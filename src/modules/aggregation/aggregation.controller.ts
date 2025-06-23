@@ -20,8 +20,6 @@ export class AggregationController {
   async workload(@Query() query: WorkloadQueryDto): Promise<WorkloadDto> {
     const result = await this.aggregationService.workload(query);
 
-    console.log('Workload aggregation result:', result);
-
     if (!result.success) {
       throw new Error(result.error || 'Failed to fetch workload data');
     }
