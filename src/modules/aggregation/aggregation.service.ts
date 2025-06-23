@@ -107,6 +107,11 @@ export class AggregationService {
       tasks.push({
         key: task.key,
         createdAt: task.createdAt,
+        deadline: task.deadline || null,
+        resolvedAt: task.resolvedAt || null,
+        deltaTime: task.resolvedAt
+          ? (new Date(task.resolvedAt).getTime() - new Date(task.createdAt).getTime()) / 1000 / 3600
+          : null,
         summary: task.summary,
         description: task.description,
         worklogs,

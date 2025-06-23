@@ -20,6 +20,9 @@ export const WorklogItemSchema = z.object({
 export const WorkloadTaskSchema = z.object({
   key: z.string(),
   createdAt: z.string(),
+  deadline: z.string().nullable(),
+  resolvedAt: z.string().nullable(),
+  deltaTime: z.number().nullable(),
   summary: z.string(),
   description: z.string().optional(),
   worklogs: z.array(WorklogItemSchema).optional(),

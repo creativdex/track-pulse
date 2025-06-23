@@ -77,6 +77,8 @@ export const TrackerTaskSchema = z.object({
   type: TrackerTypeSchema,
   priority: TrackerPrioritySchema,
   createdAt: z.string(),
+  deadline: z.string().optional(),
+  resolvedAt: z.string().optional(),
   followers: z.array(TrackerUserSchema),
   createdBy: TrackerUserSchema,
   votes: z.number(),
