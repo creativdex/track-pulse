@@ -5,6 +5,7 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
+RUN ls -R /app
 
 FROM node:22-alpine AS runtime
 
@@ -22,4 +23,4 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 EXPOSE 3000
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]

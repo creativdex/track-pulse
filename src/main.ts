@@ -14,11 +14,13 @@ async function bootstrap(): Promise<void> {
   const appPort = configService.getOrThrow<number>('ENV__APP_PORT');
   const appHost = configService.getOrThrow<string>('ENV__APP_HOST');
 
-  // app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api');
   app.enableShutdownHooks();
   app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());
   enableCorsFromHosts(app, configService.getOrThrow<string>('ENV__CORS_HOSTS'));
+
+  const domainHost = configService.get<string>('ENV__DOMAIN_HOST');
 
   const swaggerConfigRaw = new DocumentBuilder()
     .setTitle('Track Pulse API')
@@ -26,17 +28,12 @@ async function bootstrap(): Promise<void> {
     .setVersion('1.0.0')
     .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header' })
     .addBearerAuth()
-    .addServer(`http://localhost:${appPort}`);
-
-  const domainHost = configService.get<string>('ENV__DOMAIN_HOST');
-  if (domainHost) {
-    swaggerConfigRaw.addServer(domainHost);
-  }
+    .addServer(domainHost || `http://localhost:${appPort}`);
 
   const swaggerConfig = swaggerConfigRaw.build();
   patchNestJsSwagger();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, swaggerDocument);
+  SwaggerModule.setup('/api/docs', app, swaggerDocument);
 
   await app.listen(appPort, appHost);
 }
