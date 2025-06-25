@@ -21,7 +21,7 @@ export class AggregationService {
     protected readonly configService: ConfigService,
     protected readonly userTrackerService: UserTrackerService,
   ) {
-    this.defaultQueue = configService.get<string>('ENV__YA_TRACKER_QUEUE') || 'ZOTA';
+    this.defaultQueue = configService.get<string>('ENV__YA_TRACKER_QUEUE') || 'Zota';
   }
 
   async workload(params: IWorkloadQuery): Promise<IServiceResult<IWorkload>> {
