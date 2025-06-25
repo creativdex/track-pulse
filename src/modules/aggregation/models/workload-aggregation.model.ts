@@ -48,7 +48,7 @@ export const WorkloadSchema = z.object({
 export const WorkloadQuerySchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
-  queue: z.string().optional().default('Prisma').describe('Queue to filter tasks'),
+  queue: z.string().optional().describe('Queue to filter tasks'),
 });
 
 export type IWorkloadItem = z.infer<typeof WorkloadItemSchema>;
