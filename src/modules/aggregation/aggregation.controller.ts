@@ -15,7 +15,7 @@ export class AggregationController {
     description: 'Returns workload data grouped by project',
     type: WorkloadDto,
   })
-  @ApplyGuard(EGuardType.JWT, ERoleUser.ADMIN)
+  @ApplyGuard(EGuardType.JWT, ERoleUser.VIEWER)
   @Get('workload')
   async workload(@Query() query: WorkloadQueryDto): Promise<WorkloadDto> {
     const result = await this.aggregationService.workload(query);
