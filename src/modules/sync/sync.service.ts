@@ -24,7 +24,7 @@ export class SyncService {
         this.logger.error(`Failed to fetch users from YaTracker: ${fetchedUsersResult.error.message}`);
         return { success: false, error: fetchedUsersResult.error.message };
       }
-      const fetchedUsers = fetchedUsersResult.data;
+      const fetchedUsers = fetchedUsersResult.data.filter((u) => !(u.email && u.email.endsWith('@prisma-dev.ru')));
 
       const localUsersResult = await this.userService.findAll();
       if (!localUsersResult.success) {
