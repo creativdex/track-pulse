@@ -8,6 +8,7 @@ import {
   ManyToOne,
 } from 'typeorm';
 import { UserTrackerEntity } from '../user/user.entity';
+import { EUserTrackerRateType } from './models/user-rate.model';
 
 @Entity('user_tracker_rates')
 export class UserTrackerRateEntity {
@@ -25,6 +26,15 @@ export class UserTrackerRateEntity {
 
   @Column({ name: 'comment', nullable: true })
   comment: string;
+
+  @Column({ name: 'type', type: 'enum', enum: EUserTrackerRateType })
+  type: EUserTrackerRateType;
+
+  @Column({ name: 'context_value', nullable: true })
+  contextValue?: string;
+
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
 
   @ManyToOne(() => UserTrackerEntity, { onDelete: 'CASCADE', nullable: false })
   @JoinColumn({ name: 'user_id' })

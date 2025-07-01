@@ -10,6 +10,7 @@ import {
 import { IServiceResult } from '@src/shared/types/service-result.type';
 import { ConfigService } from '@nestjs/config';
 import { UserTrackerService } from '../tracker/user/user.service';
+import { UserTrackerRateService } from '../tracker/user-rate/user-rate.service';
 
 @Injectable()
 export class AggregationService {
@@ -20,6 +21,7 @@ export class AggregationService {
     protected readonly yaTrackerClient: YaTrackerClient,
     protected readonly configService: ConfigService,
     protected readonly userTrackerService: UserTrackerService,
+    protected readonly userTrackerRateService: UserTrackerRateService,
   ) {
     this.defaultQueue = configService.get<string>('ENV__YA_TRACKER_QUEUE') || 'Zota';
   }
@@ -56,11 +58,26 @@ export class AggregationService {
     }
     this.logger.debug(`Found ${allWorklogs.data.length} worklogs for the period ${fromIso} to ${toIso}`);
 
-    const rateByTrackerUid = new Map<string, number>();
+    // Получаем все активные ставки в виде Map для быстрого поиска
+    this.logger.debug(`Fetching active user rates`);
+    const ratesMap = await this.userTrackerRateService.findAllActiveRatesAsMap();
+    this.logger.debug(`Loaded ${ratesMap.size} rate entries`);
+
+    // Создаём Map для быстрого поиска пользователя по trackerUid
+    const trackerUidToUser = new Map<string, string>();
     for (const user of allUserTracker.data) {
-      for (const id of user.trackerUid) {
-        rateByTrackerUid.set(id, user.rate || 0);
+      for (const trackerUid of user.trackerUid) {
+        trackerUidToUser.set(trackerUid, user.id);
       }
+    }
+
+    // Создаём Map задач с информацией о проекте для правильного определения ставок
+    const taskInfoMap = new Map<string, { projectId?: string; queueKey: string }>();
+    for (const task of allTasks.data) {
+      taskInfoMap.set(task.key, {
+        projectId: task.project?.primary?.id,
+        queueKey: queue, // Все задачи из одной очереди в данном запросе
+      });
     }
 
     const worklogByTask = new Map<string, IWorklogItem[]>();
@@ -71,14 +88,25 @@ export class AggregationService {
         worklogByTask.set(taskKey, []);
       }
 
+      // Определяем ставку пользователя с учётом приоритета (project > queue > global)
+      const userId = trackerUidToUser.get(wl.createdBy.id);
+      const taskInfo = taskInfoMap.get(taskKey);
+      let rate = 0;
+
+      if (userId && taskInfo) {
+        rate = UserTrackerRateService.findRateFromMap(ratesMap, userId, taskInfo.projectId, taskInfo.queueKey) || 0;
+      }
+
+      const hoursSpent = this.parseDurationToHours(wl.duration) || 0;
+
       worklogByTask.get(taskKey)?.push({
         key: wl.id,
         issueKey: wl.issue.key,
         authorId: wl.createdBy.id,
         comment: wl.comment,
         createdAt: wl.createdAt,
-        hoursSpent: this.parseDurationToHours(wl.duration) || 0,
-        amount: this.parseDurationToHours(wl.duration) * (rateByTrackerUid.get(wl.createdBy.id) || 0),
+        hoursSpent,
+        amount: hoursSpent * rate,
       });
     }
 
