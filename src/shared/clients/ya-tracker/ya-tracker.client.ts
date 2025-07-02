@@ -10,6 +10,7 @@ import { PAGINATION_CONSTANTS } from './ya-tracker.const';
 import { YaTrackerUserClient } from './users/ya-tracker-user.client';
 import { YaTrackerWorklogClient } from './worklog/ya-tracker-worklog.client';
 import { YaTrackerEntityClient } from './entity/entity.client';
+import { YaTrackerQueueClient } from './queue/queue.client';
 import * as jose from 'jose';
 
 @Injectable()
@@ -29,6 +30,7 @@ export class YaTrackerClient extends AbstractHttpClient {
   public readonly users: YaTrackerUserClient;
   public readonly worklog: YaTrackerWorklogClient;
   public readonly entity: YaTrackerEntityClient;
+  public readonly queue: YaTrackerQueueClient;
 
   constructor(private configService: ConfigService) {
     const apiUrl = configService.getOrThrow<string>('ENV__YA_TRACKER_API_URL');
@@ -47,6 +49,7 @@ export class YaTrackerClient extends AbstractHttpClient {
     this.users = new YaTrackerUserClient(this);
     this.worklog = new YaTrackerWorklogClient(this);
     this.entity = new YaTrackerEntityClient(this);
+    this.queue = new YaTrackerQueueClient(this);
   }
 
   /**

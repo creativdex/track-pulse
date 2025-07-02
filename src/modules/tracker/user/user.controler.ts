@@ -6,6 +6,7 @@ import { UserTrackerDto } from './models/user.model';
 import { UpdateUserTrackerDto } from './models/update-user.model';
 import { ApplyGuard } from '@src/shared/access/decorators/apply-guard.decorator';
 import { EGuardType } from '@src/shared/access/guard-type.enum';
+import { EUserTrackerRateType } from '../user-rate/models/user-rate.model';
 
 @Controller('users-tracker')
 export class UserTrackerController {
@@ -117,5 +118,46 @@ export class UserTrackerController {
   @Delete(':id')
   async deleteUserById(@Param('id') id: string): Promise<void> {
     await this.userService.delete(id);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: [UserTrackerDto],
+    description: 'Get all users filtered by rate type',
+  })
+  @ApiQuery({
+    name: 'rateType',
+    required: true,
+    enum: EUserTrackerRateType,
+    description: 'Type of rate to filter by (GLOBAL, PROJECT, QUEUE)',
+    example: EUserTrackerRateType.GLOBAL,
+  })
+  @ApiQuery({
+    name: 'context',
+    required: false,
+    type: String,
+    description: 'Context value for PROJECT/QUEUE rate types (project ID or queue name)',
+    example: 'PROJECT-123',
+  })
+  @ApiQuery({
+    name: 'includeDismissed',
+    required: false,
+    type: Boolean,
+    description: 'Include dismissed users in the response (default: false)',
+    example: false,
+  })
+  @ApplyGuard(EGuardType.JWT)
+  @Get('by-rate-type')
+  async getAllUsersByRateType(
+    @Query('rateType') rateType: EUserTrackerRateType,
+    @Query('context') context?: string,
+    @Query('includeDismissed') includeDismissed?: string,
+  ): Promise<UserTrackerDto[]> {
+    const includeFlag = includeDismissed === 'true';
+    const result = await this.userService.findAllByRateType(rateType, context, includeFlag);
+    if (!result.success) {
+      throw new Error(`Failed to get users by rate type: ${result.error}`);
+    }
+    return result.data;
   }
 }

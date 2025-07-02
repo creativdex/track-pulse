@@ -117,66 +117,90 @@ export class UserTrackerRateService {
   async batchUpdateRates(batchData: IBatchRateUpdate): Promise<IServiceResult<IBatchRateUpdateResult[]>> {
     this.logger.log(`Starting batch rate update for ${batchData.changes.length} employees`);
 
-    const results: IBatchRateUpdateResult[] = [];
-    let successCount = 0;
-    let errorCount = 0;
+    return this.userTrackerRateRepository.manager.transaction(async (manager) => {
+      const results: IBatchRateUpdateResult[] = [];
+      let successCount = 0;
+      let errorCount = 0;
 
-    for (const change of batchData.changes) {
-      try {
-        // Проверяем существование пользователя
-        const user = await this.userTrackerRepository.findOne({
-          where: { id: change.userId },
-        });
+      for (const change of batchData.changes) {
+        try {
+          // Check if user exists
+          const user = await this.userTrackerRepository.findOne({
+            where: { id: change.userId },
+          });
 
-        if (!user) {
-          this.logger.warn(`User with id ${change.userId} not found`);
+          if (!user) {
+            this.logger.warn(`User with id ${change.userId} not found`);
+            results.push({
+              userId: change.userId,
+              success: false,
+              error: `User with id ${change.userId} not found`,
+            });
+            errorCount++;
+            continue;
+          }
+
+          // Find and deactivate existing active rate for the same context
+          const whereCondition: Partial<UserTrackerRateEntity> = {
+            userId: user.id,
+            type: change.type,
+            isActive: true,
+          };
+
+          if (change.type === EUserTrackerRateType.PROJECT || change.type === EUserTrackerRateType.QUEUE) {
+            whereCondition.contextValue = change.contextValue;
+          }
+
+          const existingRate = await manager.findOne(UserTrackerRateEntity, { where: whereCondition });
+
+          if (existingRate) {
+            await manager.update(UserTrackerRateEntity, { id: existingRate.id }, { isActive: false });
+            this.logger.log(
+              `Deactivated existing rate ${existingRate.id} for user ${user.id}, type: ${change.type}, context: ${change.contextValue || 'null'}`,
+            );
+          }
+
+          // Create new rate
+          const userRateData: ICreateUserTrackerRate = {
+            userId: change.userId,
+            rate: change.rate,
+            comment: change.comment,
+            type: change.type,
+            contextValue: change.contextValue,
+          };
+
+          const newRate = manager.create(UserTrackerRateEntity, {
+            ...userRateData,
+            isActive: true,
+          });
+
+          const savedRate = await manager.save(newRate);
+          this.logger.log(`Rate updated successfully for user ${change.userId}: ${change.rate} RUB/hour`);
+
+          results.push({
+            userId: change.userId,
+            success: true,
+            rateId: savedRate.id,
+          });
+          successCount++;
+        } catch (error) {
+          this.logger.error(`Failed to update rate for user ${change.userId}:`, error);
           results.push({
             userId: change.userId,
             success: false,
-            error: `User with id ${change.userId} not found`,
+            error: error instanceof Error ? error.message : 'Unknown error occurred',
           });
           errorCount++;
-          continue;
         }
-
-        // Создаем новую запись о ставке
-        const userRateData: ICreateUserTrackerRate = {
-          userId: change.userId,
-          rate: change.rate,
-          comment: change.comment,
-          type: change.type,
-          contextValue: change.contextValue,
-        };
-
-        const userRate = this.userTrackerRateRepository.create(userRateData);
-        const savedRate = await this.userTrackerRateRepository.save(userRate);
-
-        this.logger.log(`Rate updated successfully for user ${change.userId}: ${change.rate} RUB/hour`);
-
-        results.push({
-          userId: change.userId,
-          success: true,
-          rateId: savedRate.id,
-        });
-        successCount++;
-      } catch (error) {
-        this.logger.error(`Failed to update rate for user ${change.userId}:`, error);
-        results.push({
-          userId: change.userId,
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error occurred',
-        });
-        errorCount++;
       }
-    }
 
-    this.logger.log(`Batch rate update completed: ${successCount} successful, ${errorCount} failed`);
+      this.logger.log(`Batch rate update completed: ${successCount} successful, ${errorCount} failed`);
 
-    // Возвращаем результат - всегда успешный, но с детализацией по каждому сотруднику
-    return {
-      success: true,
-      data: results,
-    };
+      return {
+        success: true,
+        data: results,
+      };
+    });
   }
 
   /**
@@ -272,6 +296,7 @@ export class UserTrackerRateService {
     // 3. Fall back to global rate
     const globalKey = `${userId}:global`;
     const globalRate = rateMap.get(globalKey);
+    console.log(`Global rate for user ${userId}: ${globalRate}`);
     if (globalRate !== undefined) {
       return globalRate;
     }

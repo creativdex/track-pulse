@@ -5,7 +5,8 @@ import { ITrackerGetEntity } from './models/get-entity.model';
 import { ITrackerEntity } from './models/entity.model';
 import { EHttpMethod } from '@src/shared/abstract/http-client/http-client.abstract.enum';
 import { ETrackerEntityType } from './entity.enum';
-import { ITrackerSearchEntity, ITrackerSearchEntityResult } from './models/search-entity.models';
+import { ITrackerSearchEntity } from './models/search-entity.models';
+import { IScrollMeta, IPaginateMeta } from '../ya-tracker.model';
 
 // Mock для jose
 jest.mock('jose', () => ({
@@ -22,6 +23,7 @@ describe('YaTrackerEntityClient', () => {
 
   const mockBaseClient = {
     makeRequest: jest.fn(),
+    requestAllData: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -47,7 +49,10 @@ describe('YaTrackerEntityClient', () => {
       path: { typeEntity: ETrackerEntityType.PROJECT, id: '123' },
       query: { fields: 'id,name' },
     };
-    const mockEntity: ITrackerEntity = { id: '123' };
+    const mockEntity: ITrackerEntity = {
+      id: '123',
+      shortId: 1,
+    };
 
     it('should get entity successfully', async () => {
       mockBaseClient.makeRequest.mockResolvedValue({ success: true, data: mockEntity });
@@ -85,48 +90,85 @@ describe('YaTrackerEntityClient', () => {
     });
   });
 
-  describe('searchEntity', () => {
+  describe('searchEntityToArray', () => {
     const mockPayload: ITrackerSearchEntity = {
       path: { typeEntity: ETrackerEntityType.PROJECT },
       query: { fields: 'id,name' },
       body: { filter: { name: 'Test' } },
     };
-    const mockResult: ITrackerSearchEntityResult = { hits: 1, pages: 1, values: [{ id: '1' }] };
+    const mockEntities: ITrackerEntity[] = [{ id: '1', shortId: 1 }];
 
-    it('should search entity successfully', async () => {
-      mockBaseClient.makeRequest.mockResolvedValue({ success: true, data: mockResult });
-      const result = await entityClient.searchEntity(mockPayload);
+    it('should search entities successfully', async () => {
+      const mockSearchEntity = jest
+        .fn()
+        .mockImplementation(
+          async (
+            request: ITrackerSearchEntity,
+            options: any,
+            onPage: (entities: ITrackerEntity[], meta: IScrollMeta | IPaginateMeta) => Promise<void> | void,
+          ) => {
+            await onPage(mockEntities, { page: 1 } as IPaginateMeta);
+          },
+        );
+      entityClient.searchEntity = mockSearchEntity;
+
+      const result = await entityClient.searchEntityToArray(mockPayload);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data).toEqual(mockResult);
+        expect(result.data).toEqual(mockEntities);
       }
-      expect(mockBaseClient.makeRequest).toHaveBeenCalledWith(
+    });
+
+    it('should handle search entities error', async () => {
+      const mockError = new Error('Search error');
+      const mockSearchEntity = jest.fn().mockRejectedValue(mockError);
+      entityClient.searchEntity = mockSearchEntity;
+
+      try {
+        await entityClient.searchEntityToArray(mockPayload);
+      } catch (error) {
+        expect(error).toBe(mockError);
+      }
+    });
+  });
+
+  describe('searchProjectsToArray', () => {
+    const mockProjects: ITrackerEntity[] = [
+      { id: '1', shortId: 1, fields: { summary: 'Project 1' } },
+      { id: '2', shortId: 2, fields: { summary: 'Project 2' } },
+    ];
+
+    it('should search projects successfully', async () => {
+      const mockSearchEntityToArray = jest.fn().mockResolvedValue({ success: true, data: mockProjects });
+      entityClient.searchEntityToArray = mockSearchEntityToArray;
+
+      const result = await entityClient.searchProjectsToArray();
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(mockProjects);
+      }
+      expect(mockSearchEntityToArray).toHaveBeenCalledWith(
         {
-          method: EHttpMethod.POST,
-          endpoint: 'entities/project/_search',
-          params: { fields: 'id,name' },
-          data: { filter: { name: 'Test' } },
-          contentType: 'application/json',
+          path: { typeEntity: ETrackerEntityType.PROJECT },
+          query: {
+            fields:
+              'id,shortId,summary,description,author,lead,teamUsers,clients,followers,start,end,checklistItems,tags,parentEntity,teamAccess,quarter,entityStatus,issueQueues',
+          },
         },
-        'search_entity',
+        {},
       );
     });
 
-    it('should handle search entity error', async () => {
+    it('should handle search projects error', async () => {
       const mockError = new Error('Search error');
-      mockBaseClient.makeRequest.mockResolvedValue({ success: false, error: mockError });
-      const result = await entityClient.searchEntity(mockPayload);
+      const mockSearchEntityToArray = jest.fn().mockResolvedValue({ success: false, error: mockError });
+      entityClient.searchEntityToArray = mockSearchEntityToArray;
+
+      const result = await entityClient.searchProjectsToArray();
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBe(mockError);
       }
-    });
-
-    it('should log search entity attempt', async () => {
-      const logSpy = jest.spyOn(entityClient['logger'], 'log');
-      mockBaseClient.makeRequest.mockResolvedValue({ success: true, data: mockResult });
-      await entityClient.searchEntity(mockPayload);
-      expect(logSpy).toHaveBeenCalledWith('Searching entity', { typeEntity: ETrackerEntityType.PROJECT });
     });
   });
 });

@@ -14,7 +14,7 @@ async function bootstrap(): Promise<void> {
   const appPort = configService.getOrThrow<number>('ENV__APP_PORT');
   const appHost = configService.getOrThrow<string>('ENV__APP_HOST');
 
-  app.setGlobalPrefix('api');
+  // app.setGlobalPrefix('api');
   app.enableShutdownHooks();
   app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());

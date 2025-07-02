@@ -216,6 +216,251 @@ describe('UserTrackerRateService', () => {
     expect(mockManager.save).toHaveBeenCalledWith(newUserRate);
   });
 
+  describe('batchUpdateRates', () => {
+    it('should successfully update rates for multiple users', async () => {
+      type MockManager = {
+        findOne: jest.Mock;
+        update: jest.Mock;
+        create: jest.Mock;
+        save: jest.Mock;
+      };
+
+      const mockManager: MockManager = {
+        findOne: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+
+      userRateRepository.manager.transaction.mockImplementation((callback) =>
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+        callback(mockManager),
+      );
+
+      const user1 = { id: 'user1' };
+      const user2 = { id: 'user2' };
+      const existingRate = { id: 'existing-rate-id' };
+      const newRate1 = { id: 'new-rate-1', rate: 1500 };
+      const newRate2 = { id: 'new-rate-2', rate: 2000 };
+
+      // Mock user lookups
+      userRepository.findOne
+        .mockResolvedValueOnce(user1) // First user lookup
+        .mockResolvedValueOnce(user2); // Second user lookup
+
+      // Mock existing rate lookups
+      mockManager.findOne
+        .mockResolvedValueOnce(existingRate) // User1 has existing rate
+        .mockResolvedValueOnce(null); // User2 has no existing rate
+
+      // Mock rate creation
+      mockManager.create.mockReturnValueOnce(newRate1).mockReturnValueOnce(newRate2);
+
+      // Mock rate saving
+      mockManager.save.mockResolvedValueOnce(newRate1).mockResolvedValueOnce(newRate2);
+
+      const batchData = {
+        changes: [
+          {
+            userId: 'user1',
+            rate: 1500,
+            comment: 'Updated rate',
+            type: EUserTrackerRateType.PROJECT,
+            contextValue: 'PROJ123',
+          },
+          {
+            userId: 'user2',
+            rate: 2000,
+            comment: 'New rate',
+            type: EUserTrackerRateType.GLOBAL,
+          },
+        ],
+      };
+
+      const result = await service.batchUpdateRates(batchData);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect(result.data[0]).toEqual({
+          userId: 'user1',
+          success: true,
+          rateId: 'new-rate-1',
+        });
+        expect(result.data[1]).toEqual({
+          userId: 'user2',
+          success: true,
+          rateId: 'new-rate-2',
+        });
+      }
+
+      // Verify existing rate was deactivated for user1
+      expect(mockManager.update).toHaveBeenCalledWith(
+        UserTrackerRateEntity,
+        { id: 'existing-rate-id' },
+        { isActive: false },
+      );
+
+      // Verify new rates were created
+      expect(mockManager.create).toHaveBeenCalledTimes(2);
+      expect(mockManager.save).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle user not found error', async () => {
+      type MockManager = {
+        findOne: jest.Mock;
+        update: jest.Mock;
+        create: jest.Mock;
+        save: jest.Mock;
+      };
+
+      const mockManager: MockManager = {
+        findOne: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+      userRateRepository.manager.transaction.mockImplementation((callback) => callback(mockManager));
+
+      // Mock user not found
+      userRepository.findOne.mockResolvedValue(null);
+
+      const batchData = {
+        changes: [
+          {
+            userId: 'nonexistent-user',
+            rate: 1500,
+            comment: 'Test rate',
+            type: EUserTrackerRateType.GLOBAL,
+          },
+        ],
+      };
+
+      const result = await service.batchUpdateRates(batchData);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(1);
+        expect(result.data[0]).toEqual({
+          userId: 'nonexistent-user',
+          success: false,
+          error: 'User with id nonexistent-user not found',
+        });
+      }
+
+      // Verify no rate operations were performed
+      expect(mockManager.create).not.toHaveBeenCalled();
+      expect(mockManager.save).not.toHaveBeenCalled();
+    });
+
+    it('should handle database errors gracefully', async () => {
+      type MockManager = {
+        findOne: jest.Mock;
+        update: jest.Mock;
+        create: jest.Mock;
+        save: jest.Mock;
+      };
+
+      const mockManager: MockManager = {
+        findOne: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+      userRateRepository.manager.transaction.mockImplementation((callback) => callback(mockManager));
+
+      const user = { id: 'user1' };
+      userRepository.findOne.mockResolvedValue(user);
+      mockManager.findOne.mockResolvedValue(null);
+      mockManager.create.mockReturnValue({ id: 'new-rate' });
+
+      // Mock database error on save
+      mockManager.save.mockRejectedValue(new Error('Database connection error'));
+
+      const batchData = {
+        changes: [
+          {
+            userId: 'user1',
+            rate: 1500,
+            comment: 'Test rate',
+            type: EUserTrackerRateType.GLOBAL,
+          },
+        ],
+      };
+
+      const result = await service.batchUpdateRates(batchData);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(1);
+        expect(result.data[0]).toEqual({
+          userId: 'user1',
+          success: false,
+          error: 'Database connection error',
+        });
+      }
+    });
+
+    it('should handle mixed success and failure results', async () => {
+      type MockManager = {
+        findOne: jest.Mock;
+        update: jest.Mock;
+        create: jest.Mock;
+        save: jest.Mock;
+      };
+
+      const mockManager: MockManager = {
+        findOne: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+      userRateRepository.manager.transaction.mockImplementation((callback) => callback(mockManager));
+
+      const user1 = { id: 'user1' };
+      const newRate = { id: 'new-rate-1', rate: 1500 };
+
+      // First user exists, second doesn't
+      userRepository.findOne.mockResolvedValueOnce(user1).mockResolvedValueOnce(null);
+
+      mockManager.findOne.mockResolvedValue(null);
+      mockManager.create.mockReturnValue(newRate);
+      mockManager.save.mockResolvedValue(newRate);
+
+      const batchData = {
+        changes: [
+          {
+            userId: 'user1',
+            rate: 1500,
+            comment: 'Valid user',
+            type: EUserTrackerRateType.GLOBAL,
+          },
+          {
+            userId: 'nonexistent-user',
+            rate: 2000,
+            comment: 'Invalid user',
+            type: EUserTrackerRateType.GLOBAL,
+          },
+        ],
+      };
+
+      const result = await service.batchUpdateRates(batchData);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect(result.data[0].success).toBe(true);
+        expect(result.data[1].success).toBe(false);
+      }
+    });
+  });
+
   describe('findRateFromMap', () => {
     it('should return project rate with highest priority', () => {
       const rateMap = new Map([

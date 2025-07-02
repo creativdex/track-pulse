@@ -63,19 +63,11 @@ export class AggregationService {
     const ratesMap = await this.userTrackerRateService.findAllActiveRatesAsMap();
     this.logger.debug(`Loaded ${ratesMap.size} rate entries`);
 
-    // Создаём Map для быстрого поиска пользователя по trackerUid
-    const trackerUidToUser = new Map<string, string>();
-    for (const user of allUserTracker.data) {
-      for (const trackerUid of user.trackerUid) {
-        trackerUidToUser.set(trackerUid, user.id);
-      }
-    }
-
     // Создаём Map задач с информацией о проекте для правильного определения ставок
     const taskInfoMap = new Map<string, { projectId?: string; queueKey: string }>();
     for (const task of allTasks.data) {
       taskInfoMap.set(task.key, {
-        projectId: task.project?.primary?.id,
+        projectId: task.project?.primary.id,
         queueKey: queue, // Все задачи из одной очереди в данном запросе
       });
     }
@@ -89,7 +81,7 @@ export class AggregationService {
       }
 
       // Определяем ставку пользователя с учётом приоритета (project > queue > global)
-      const userId = trackerUidToUser.get(wl.createdBy.id);
+      const userId = wl.createdBy.id;
       const taskInfo = taskInfoMap.get(taskKey);
       let rate = 0;
 
