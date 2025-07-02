@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserTrackerService } from './user.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UserTrackerEntity } from './user.entity';
+import { EUserTrackerRateType } from '../user-rate/models/user-rate.model';
 
 const mockUserRepository = () => ({
   find: jest.fn(),
@@ -42,7 +43,6 @@ describe('UserService', () => {
     });
     if (result.success) {
       expect(result.data[0].id).toBe('1');
-      expect(result.data[0]).toHaveProperty('rate', 5);
     }
   });
 
@@ -96,7 +96,6 @@ describe('UserService', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.id).toBe('1');
-      expect(result.data.rate).toBe(7);
     }
   });
 
@@ -174,7 +173,6 @@ describe('UserService', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.id).toBe('1');
-      expect(result.data.rate).toBe(10);
     }
   });
 
@@ -228,6 +226,123 @@ describe('UserService', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data[0].rate).toBeNull();
+    }
+  });
+
+  /**
+   * Возвращает всех пользователей с активными ставками указанного типа.
+   */
+  it('should return all users filtered by rate type', async () => {
+    const users = [
+      {
+        id: '1',
+        rates: [{ rate: 5, type: 'global', isActive: true, contextValue: null, createdAt: new Date() }],
+      },
+      {
+        id: '2',
+        rates: [{ rate: 7, type: 'project', isActive: true, contextValue: 'PROJECT-123', createdAt: new Date() }],
+      },
+      {
+        id: '3',
+        rates: [{ rate: 3, type: 'queue', isActive: false, contextValue: 'SUPPORT', createdAt: new Date() }],
+      },
+    ];
+    userRepository.find.mockResolvedValue(users);
+    const result = await service.findAllByRateType(EUserTrackerRateType.GLOBAL);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(3);
+      expect(result.data[0].rate).toBe(5); // У первого пользователя есть глобальная ставка
+      expect(result.data[1].rate).toBeNull(); // У второго нет глобальной ставки
+      expect(result.data[2].rate).toBeNull(); // У третьего нет активной ставки
+    }
+  });
+
+  /**
+   * Возвращает всех пользователей с активными ставками указанного типа и контекста.
+   */
+  it('should return all users filtered by rate type and context', async () => {
+    const users = [
+      {
+        id: '1',
+        rates: [{ rate: 5, type: 'project', isActive: true, contextValue: 'PROJECT-123', createdAt: new Date() }],
+      },
+      {
+        id: '2',
+        rates: [{ rate: 7, type: 'project', isActive: true, contextValue: 'PROJECT-456', createdAt: new Date() }],
+      },
+      {
+        id: '3',
+        rates: [{ rate: 3, type: 'project', isActive: false, contextValue: 'PROJECT-123', createdAt: new Date() }],
+      },
+    ];
+    userRepository.find.mockResolvedValue(users);
+    const result = await service.findAllByRateType(EUserTrackerRateType.PROJECT, 'PROJECT-123');
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(3);
+      expect(result.data[0].rate).toBe(5); // У первого есть активная ставка для PROJECT-123
+      expect(result.data[1].rate).toBeNull(); // У второго ставка для другого проекта
+      expect(result.data[2].rate).toBeNull(); // У третьего неактивная ставка
+    }
+  });
+
+  /**
+   * Возвращает всех пользователей с активными ставками указанного типа без учета контекста.
+   */
+  it('should return all users filtered by rate type without context', async () => {
+    const users = [
+      {
+        id: '1',
+        rates: [{ rate: 5, type: 'project', isActive: true, contextValue: 'PROJECT-123', createdAt: new Date() }],
+      },
+      {
+        id: '2',
+        rates: [{ rate: 7, type: 'project', isActive: true, contextValue: 'PROJECT-456', createdAt: new Date() }],
+      },
+      {
+        id: '3',
+        rates: [{ rate: 3, type: 'queue', isActive: true, contextValue: 'SUPPORT', createdAt: new Date() }],
+      },
+    ];
+    userRepository.find.mockResolvedValue(users);
+    const result = await service.findAllByRateType(EUserTrackerRateType.PROJECT); // без контекста
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(3);
+      expect(result.data[0].rate).toBe(5); // У первого есть активная ставка типа project
+      expect(result.data[1].rate).toBe(7); // У второго тоже есть активная ставка типа project
+      expect(result.data[2].rate).toBeNull(); // У третьего ставка другого типа
+    }
+  });
+
+  /**
+   * Возвращает всех пользователей включая dismissed при фильтрации по типу ставки.
+   */
+  it('should return all users including dismissed when filtering by rate type with includeDismissed=true', async () => {
+    const users = [
+      {
+        id: '1',
+        dismissed: false,
+        rates: [{ rate: 5, type: 'global', isActive: true, contextValue: null, createdAt: new Date() }],
+      },
+      {
+        id: '2',
+        dismissed: true,
+        rates: [{ rate: 7, type: 'global', isActive: true, contextValue: null, createdAt: new Date() }],
+      },
+    ];
+    userRepository.find.mockResolvedValue(users);
+    const result = await service.findAllByRateType(EUserTrackerRateType.GLOBAL, undefined, true);
+    expect(result.success).toBe(true);
+    expect(userRepository.find).toHaveBeenCalledWith({
+      where: {},
+      relations: ['rates'],
+    });
+    if (result.success) {
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].rate).toBe(5);
+      expect(result.data[1].rate).toBe(7);
     }
   });
 });

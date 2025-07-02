@@ -33,6 +33,12 @@ export const TrackerSearchEntityResultSchema = z.object({
   values: z.array(TrackerEntitySchema),
 });
 
+export const SearchEntityOptionsSchema = z.object({
+  perPage: z.number().min(1).max(100).optional(),
+  strategy: z.enum(['scroll', 'paginate']).optional(),
+});
+
 export type ITrackerSearchEntity = z.infer<typeof TrackerSearchEntitySchema>;
 export type ITrackerSearchEntityBody = z.infer<typeof TrackerSearchEntityBodySchema>;
 export type ITrackerSearchEntityResult = z.infer<typeof TrackerSearchEntityResultSchema>;
+export type ISearchEntityOptions = z.infer<typeof SearchEntityOptionsSchema>;

@@ -1,9 +1,9 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { RateChangeSchema } from './rate-change.model';
+import { CreateUserTrackerRateSchema } from './create-user-rate.model';
 
 export const BatchRateUpdateSchema = z.object({
-  changes: z.array(RateChangeSchema).describe('Array of rate changes to process'),
+  changes: z.array(CreateUserTrackerRateSchema).describe('Array of rate changes to process'),
 });
 
 export type IBatchRateUpdate = z.infer<typeof BatchRateUpdateSchema>;

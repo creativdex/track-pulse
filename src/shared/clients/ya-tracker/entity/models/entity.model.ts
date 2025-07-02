@@ -87,13 +87,17 @@ export const TrackerEntitySchema = z.object({
   id: z.string(),
   self: z.string().optional(),
   version: z.number().optional(),
-  shortId: z.string().optional(),
+  shortId: z.number(),
   entityType: z.nativeEnum(ETrackerEntityType).optional(),
   createdBy: TrackerCreatedBySchema.optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   attachments: z.array(TrackerAttachmentSchema).optional(),
   fields: TrackerFieldsSchema.optional(),
+  // Поля которые могут быть на верхнем уровне при запросе через fields
+  summary: z.string().optional(),
+  description: z.string().optional(),
+  entityStatus: z.union([z.nativeEnum(ETrackerProjectPortfolioStatus), z.nativeEnum(ETrackerGoalStatus)]).optional(),
 });
 
 export type ITrackerEntity = z.infer<typeof TrackerEntitySchema>;

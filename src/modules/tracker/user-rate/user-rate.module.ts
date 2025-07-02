@@ -9,5 +9,6 @@ import { UserTrackerEntity } from '../user/user.entity';
   imports: [TypeOrmModule.forFeature([UserTrackerRateEntity, UserTrackerEntity])],
   controllers: [UserTrackerRateController],
   providers: [UserTrackerRateService],
+  exports: [UserTrackerRateService],
 })
 export class UserTrackerRateModule {}

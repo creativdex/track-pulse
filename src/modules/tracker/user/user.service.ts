@@ -6,6 +6,7 @@ import { IUserTracker } from './models/user.model';
 import { IServiceResult } from '@src/shared/types/service-result.type';
 import { ICreateUserTracker } from './models/create-user.model';
 import { IUpdateUserTracker } from './models/update-user.model';
+import { EUserTrackerRateType } from '../user-rate/models/user-rate.model';
 
 @Injectable()
 export class UserTrackerService {
@@ -34,6 +35,39 @@ export class UserTrackerService {
     return {
       success: true,
       data: users.map(({ rates, ...user }) => ({ ...user, rate: this.lastRate(rates) })),
+    };
+  }
+
+  /**
+   * Fetches all users from the database filtered by rate type and context.
+   * @param rateType - The type of rate to filter by.
+   * @param context - The context for the rate (optional, for PROJECT/QUEUE types).
+   * @param includeDismissed - Whether to include dismissed users (default: false).
+   * @returns A promise that resolves to an array of users or an error message.
+   */
+  async findAllByRateType(
+    rateType: EUserTrackerRateType,
+    context?: string,
+    includeDismissed: boolean = false,
+  ): Promise<IServiceResult<IUserTracker[]>> {
+    this.logger.log(
+      `Fetching all users with rate type=${rateType}, context=${context || 'any'} and includeDismissed=${includeDismissed}`,
+    );
+
+    const whereCondition = includeDismissed ? {} : { dismissed: false };
+
+    const users = await this.userRepository.find({
+      where: whereCondition,
+      relations: ['rates'],
+    });
+
+    this.logger.log(`Found ${users.length} users, filtering by rate type ${rateType} and context ${context || 'any'}`);
+    return {
+      success: true,
+      data: users.map(({ rates, ...user }) => ({
+        ...user,
+        rate: this.getActiveRateByType(rates, rateType, context),
+      })),
     };
   }
 
@@ -195,21 +229,64 @@ export class UserTrackerService {
   }
 
   /**
-   * Retrieves the last rate from the user's rates.
+   * Retrieves the active rate from the user's rates.
    * @param rates - The rates of the user.
-   * @returns The last rate or null if no rates exist.
+   * @returns The active rate or null if no active rate exists.
    */
   private lastRate(rates: UserTrackerEntity['rates']): number | null {
     if (!rates || rates.length === 0) {
       return null;
     }
-    let last = rates[0];
-    for (const rate of rates) {
-      if (rate.createdAt > last.createdAt) {
-        last = rate;
-      }
+
+    // Ищем активную ставку
+    const activeRate = rates.find((rate) => rate.isActive);
+    if (!activeRate) {
+      return null;
     }
-    this.logger.log(`Last rate for user is ${last.rate}`);
-    return last.rate;
+
+    this.logger.log(`Active rate for user is ${activeRate.rate}`);
+    return activeRate.rate;
+  }
+
+  /**
+   * Retrieves the active rate of a specific type from the user's rates.
+   * @param rates - The rates of the user.
+   * @param rateType - The type of rate to filter by.
+   * @param context - The context for the rate (optional, for PROJECT/QUEUE types).
+   * @returns The active rate of the specified type or null if no active rate exists.
+   */
+  private getActiveRateByType(
+    rates: UserTrackerEntity['rates'],
+    rateType: EUserTrackerRateType,
+    context?: string,
+  ): number | null {
+    if (!rates || rates.length === 0) {
+      return null;
+    }
+
+    // Ищем активную ставку указанного типа
+    const activeRate = rates.find((rate) => {
+      const typeMatches = rate.type === rateType && rate.isActive;
+
+      // Для GLOBAL типа контекст не важен
+      if (rateType === EUserTrackerRateType.GLOBAL) {
+        return typeMatches;
+      }
+
+      // Для PROJECT/QUEUE типов проверяем контекст, если он указан
+      if (context) {
+        return typeMatches && rate.contextValue === context;
+      }
+
+      // Если контекст не указан, возвращаем любую активную ставку указанного типа
+      return typeMatches;
+    });
+
+    if (!activeRate) {
+      return null;
+    }
+
+    this.logger.log(`Active rate of type ${rateType} for user is ${activeRate.rate}`);
+    return activeRate.rate;
   }
 }

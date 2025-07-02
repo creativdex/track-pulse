@@ -20,6 +20,8 @@ import { ApplyGuard } from '@src/shared/access/decorators/apply-guard.decorator'
 import { EGuardType } from '@src/shared/access/guard-type.enum';
 import { ChangePasswordAuthBodyDto } from './models/change-password-auth.model';
 import { UpdateProfileAuthDto } from './models/update-profile.auth';
+import { ERoleUser } from '@src/shared/access/roles/role.enum';
+import { roleHierarchy } from '@src/shared/access/roles/role.priority';
 
 @Controller('auth')
 export class AuthController {
@@ -141,5 +143,28 @@ export class AuthController {
     }
 
     return HttpStatus.OK;
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Available roles retrieved successfully',
+    type: [String],
+  })
+  @Get('roles')
+  @ApplyGuard(EGuardType.JWT)
+  getAvailableRoles(@CurrentUser() currentUser: UserDto): ERoleUser[] {
+    const currentUserRole = currentUser.role as ERoleUser;
+    const currentUserPriority = roleHierarchy[currentUserRole];
+
+    if (!currentUserPriority) {
+      return [ERoleUser.VIEWER];
+    }
+
+    const availableRoles = Object.entries(roleHierarchy)
+      .filter(([, priority]) => priority <= currentUserPriority)
+      .map(([role]) => role as ERoleUser)
+      .sort((a, b) => roleHierarchy[b] - roleHierarchy[a]);
+
+    return availableRoles;
   }
 }
