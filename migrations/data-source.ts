@@ -11,7 +11,7 @@ export const MigrationDataSource = new DataSource({
   password: process.env.ENV__DB_PASSWORD,
   database: process.env.ENV__DB_NAME,
   entities: [__dirname + '/../src/**/*.entity{.ts,.js}'],
-  migrations: [__dirname + '/!(data-source).ts'], // Исключаем data-source.ts
+  migrations: [__dirname + '/!(data-source).{ts,js}'],
   synchronize: false,
   logging: true,
 });
