@@ -19,7 +19,7 @@ export class SyncService {
     let updated = 0;
     let failed = 0;
     try {
-      const fetchedUsersResult = await this.yaTrackerClient.users.getUsers();
+      const fetchedUsersResult = await this.yaTrackerClient.users.getAllUsers();
       if (!fetchedUsersResult.success) {
         this.logger.error(`Failed to fetch users from YaTracker: ${fetchedUsersResult.error.message}`);
         return { success: false, error: fetchedUsersResult.error.message };
@@ -107,6 +107,7 @@ export class SyncService {
       }
 
       for (const createData of toCreate) {
+        this.logger.log('Data passed to userService.create:', createData);
         try {
           const res = await this.userService.create({
             trackerUid: createData.trackerUid[0],

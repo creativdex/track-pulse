@@ -10,7 +10,7 @@ export const typeOrmConfigFactory = (configService: ConfigService): TypeOrmModul
   database: configService.get<string>('ENV__DB_NAME'),
   entities: [__dirname + '/../../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/../../migrations/*.ts'],
-  synchronize: false, // Используем миграции вместо synchronize
+  synchronize: true, // Используем миграции вместо synchronize
   migrationsRun: true, // Автоматически запускать миграции при старте приложения
   logging: ['error', 'warn', 'migration'],
 });

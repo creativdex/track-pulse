@@ -11,6 +11,7 @@ import { IServiceResult } from '@src/shared/types/service-result.type';
 import { ConfigService } from '@nestjs/config';
 import { UserTrackerService } from '../tracker/user/user.service';
 import { UserTrackerRateService } from '../tracker/user-rate/user-rate.service';
+import { IWorkloadByUsersItem } from '@src/modules/aggregation/models/workload-by-users-aggregation.model';
 
 @Injectable()
 export class AggregationService {
@@ -177,6 +178,51 @@ export class AggregationService {
         tasks,
       },
     };
+  }
+
+  public async getWorkloadByUser(params: IWorkloadQuery): Promise<IServiceResult<IWorkloadByUsersItem[]>> {
+    const { fromIso, toIso } = this.getPeriodDates(params);
+    this.logger.debug(`Fetching users tracker`);
+    const allUserTracker = await this.userTrackerService.findAll();
+    if (!allUserTracker.success) {
+      this.logger.error(`Failed to fetch user trackers: ${allUserTracker.error}`);
+      return { success: false, error: allUserTracker.error };
+    }
+    this.logger.debug(`Found ${allUserTracker.data.length} users tracker`);
+
+    const userMap = new Map<string, string>();
+    allUserTracker.data.forEach((user) => {
+      user.trackerUid.forEach((uid) => {
+        userMap.set(uid, user.display);
+      });
+    });
+
+    this.logger.debug(`Fetching worklogs from ${fromIso} to ${toIso}`);
+    const allWorklogs = await this.yaTrackerClient.worklog.getByQueryAllWorklog({
+      createdAt: { from: fromIso, to: toIso },
+    });
+
+    if (!allWorklogs.success) {
+      this.logger.error(`Failed to fetch worklogs: ${allWorklogs.error.message}`);
+      return { success: false, error: allWorklogs.error.message };
+    }
+
+    const report: IWorkloadByUsersItem[] = [];
+
+    for (const wl of allWorklogs.data) {
+      const hoursSpent = this.parseDurationToHours(wl.duration) || 0;
+      const userId = wl.createdBy.id;
+      const display = userMap.get(userId) || 'Unknown User';
+
+      const existing = report.find((r) => r.userId === userId);
+      if (existing) {
+        existing.hoursSpent += hoursSpent;
+      } else {
+        report.push({ userId, display, hoursSpent });
+      }
+    }
+
+    return { success: true, data: report };
   }
 
   private parseDurationToHours(duration: string): number {

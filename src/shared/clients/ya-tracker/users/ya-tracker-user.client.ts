@@ -5,6 +5,7 @@ import { YaTrackerClient } from '../ya-tracker.client';
 import { IHttpRequestOptions } from '@src/shared/abstract/http-client/http-client.abstract.interface';
 import { ITrackerUser } from './models/user.model';
 import { ITrackerGetUser } from './models/get-user.model';
+import { IPaginateMeta } from '@src/shared/clients/ya-tracker/ya-tracker.model';
 
 export class YaTrackerUserClient {
   private readonly logger = new Logger(YaTrackerUserClient.name);
@@ -25,6 +26,35 @@ export class YaTrackerUserClient {
     };
 
     return this.baseClient.makeRequest<ITrackerUser[], void>(options, 'get_users');
+  }
+
+  async getAllUsers(): Promise<IClientResult<ITrackerUser[]>> {
+    const allUsers: ITrackerUser[] = [];
+
+    await this.getByPaginateUsers((users: ITrackerUser[]) => {
+      allUsers.push(...users);
+    });
+
+    this.logger.log('All users fetched', { count: allUsers.length });
+
+    return {
+      success: true,
+      data: allUsers,
+    };
+  }
+
+  async getByPaginateUsers(
+    onPage: (users: ITrackerUser[], meta: IPaginateMeta) => Promise<void> | void,
+  ): Promise<void> {
+    this.logger.log('Getting paginated users');
+
+    const options: IHttpRequestOptions<void> = {
+      method: EHttpMethod.GET,
+      endpoint: 'users',
+      contentType: EContentType.JSON,
+    };
+
+    return this.baseClient.requestAllData<ITrackerUser[]>(options, 'get_paginated_users', onPage, 'paginate');
   }
 
   /**
