@@ -32,14 +32,16 @@ export class AggregationService {
     const { fromIso, toIso, fromShort, toShort } = this.getPeriodDates(params);
 
     this.logger.debug(`Fetching users tracker`);
+
     const allUserTracker = await this.userTrackerService.findAll();
     if (!allUserTracker.success) {
       this.logger.error(`Failed to fetch user trackers: ${allUserTracker.error}`);
       return { success: false, error: allUserTracker.error };
     }
-    this.logger.debug(`Found ${allUserTracker.data.length} users tracker`);
 
+    this.logger.debug(`Found ${allUserTracker.data.length} users tracker`);
     this.logger.debug(`Fetching tasks from ${fromIso} to ${toIso}`);
+
     const allTasks = await this.yaTrackerClient.tasks.searchTasksToArray({
       query: `Created: ${fromShort} .. ${toShort} Queue: ${queue} "Sort by": Created ASC`,
     });
@@ -47,9 +49,10 @@ export class AggregationService {
       this.logger.warn(`No tasks found for the period ${fromIso} to ${toIso}`);
       return { success: false, error: 'No tasks found' };
     }
-    this.logger.debug(`Found ${allTasks.data.length} tasks for the period ${fromIso} to ${toIso}`);
 
+    this.logger.debug(`Found ${allTasks.data.length} tasks for the period ${fromIso} to ${toIso}`);
     this.logger.debug(`Fetching worklogs from ${fromIso} to ${toIso}`);
+
     const allWorklogs = await this.yaTrackerClient.worklog.getByQueryAllWorklog({
       createdAt: { from: fromIso, to: toIso },
     });
@@ -57,6 +60,7 @@ export class AggregationService {
       this.logger.error(`Failed to fetch worklogs: ${allWorklogs.error.message}`);
       return { success: false, error: allWorklogs.error.message };
     }
+
     this.logger.debug(`Found ${allWorklogs.data.length} worklogs for the period ${fromIso} to ${toIso}`);
 
     // Получаем все активные ставки в виде Map для быстрого поиска
@@ -181,14 +185,28 @@ export class AggregationService {
   }
 
   public async getWorkloadByUser(params: IWorkloadQuery): Promise<IServiceResult<IWorkloadByUsersItem[]>> {
-    const { fromIso, toIso } = this.getPeriodDates(params);
+    const { fromIso, toIso, fromShort, toShort } = this.getPeriodDates(params);
+    const queue = params.queue ?? 'Zota';
+
     this.logger.debug(`Fetching users tracker`);
+
     const allUserTracker = await this.userTrackerService.findAll();
     if (!allUserTracker.success) {
       this.logger.error(`Failed to fetch user trackers: ${allUserTracker.error}`);
       return { success: false, error: allUserTracker.error };
     }
+
     this.logger.debug(`Found ${allUserTracker.data.length} users tracker`);
+
+    const allTasks = await this.yaTrackerClient.tasks.searchTasksToArray({
+      query: `Created: ${fromShort} .. ${toShort} Queue: ${queue} "Sort by": Created ASC`,
+    });
+    if (!allTasks.success || allTasks.data.length === 0) {
+      this.logger.warn(`No tasks found for the period ${fromIso} to ${toIso}`);
+      return { success: false, error: 'No tasks found' };
+    }
+
+    const taskIds = new Set(allTasks.data.map((task) => task.key));
 
     const userMap = new Map<string, string>();
     allUserTracker.data.forEach((user) => {
@@ -210,6 +228,10 @@ export class AggregationService {
     const report: IWorkloadByUsersItem[] = [];
 
     for (const wl of allWorklogs.data) {
+      if (!taskIds.has(wl.issue.key)) {
+        continue;
+      }
+
       const hoursSpent = this.parseDurationToHours(wl.duration) || 0;
       const userId = wl.createdBy.id;
       const display = userMap.get(userId) || 'Unknown User';
